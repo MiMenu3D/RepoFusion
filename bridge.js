@@ -1,105 +1,271 @@
-const BRIDGE_VERSION = "Bridge v84.1 (Tracking API)";
+const BRIDGE_VERSION = "Bridge 1.0";
 
-const panel = document.createElement("div");
-panel.style.position = "fixed";
-panel.style.top = "10px";
-panel.style.left = "10px";
-panel.style.background = "rgba(0,0,0,0.85)";
-panel.style.color = "lime";
-panel.style.padding = "10px";
-panel.style.fontFamily = "monospace";
-panel.style.fontSize = "12px";
-panel.style.whiteSpace = "pre";
-panel.style.zIndex = "999999";
-panel.style.maxHeight = "85vh";
-panel.style.overflow = "auto";
+/*
+    ========================================
 
-document.body.appendChild(panel);
+    RepoFusion Bridge
 
-// ===================================================================
-// TRACKING API GLOBAL
-// ===================================================================
+    8th Wall
+        ↓
+    window.Tracking
+        ↓
+    A-Frame / Three / Debug
+
+    ========================================
+*/
+
+const DEBUG_PANEL = true;
 
 window.Tracking = {
+
+    tracking: "waiting",
+
     camera: null,
+
     marker: null,
-    intrinsics: null,
-    tracking: "waiting"
+
+    intrinsics: null
+
 };
+
+window.CameraVideo = null;
+
+
+
+/* ------------------------------------ */
+/*               PANEL                  */
+/* ------------------------------------ */
+
+let panel = null;
+
+if (DEBUG_PANEL) {
+
+    panel = document.createElement("div");
+
+    panel.style.position = "fixed";
+    panel.style.top = "10px";
+    panel.style.left = "10px";
+
+    panel.style.background = "rgba(0,0,0,0.82)";
+    panel.style.color = "lime";
+
+    panel.style.padding = "10px";
+
+    panel.style.fontFamily = "monospace";
+    panel.style.fontSize = "12px";
+
+    panel.style.whiteSpace = "pre";
+
+    panel.style.maxHeight = "85vh";
+    panel.style.overflow = "auto";
+
+    panel.style.zIndex = "999999";
+
+    document.body.appendChild(panel);
+
+}
+
+
+
+/* ------------------------------------ */
+/*           EXTRAER MARKER             */
+/* ------------------------------------ */
 
 function normalizeMarker(reality) {
 
     const img = reality?.detectedImages?.[0];
-    if (!img) return null;
+
+    if (!img) {
+
+        return null;
+
+    }
 
     return {
+
+        name: img.name,
+
         position: img.position || null,
+
         rotation: img.rotation || null,
-        scale: img.scale || 1,
-        name: img.name
+
+        scale: img.scale || 1
+
     };
+
 }
 
-function extractCamera(reality) {
+
+
+/* ------------------------------------ */
+/*          EXTRAER CAMERA              */
+/* ------------------------------------ */
+
+function normalizeCamera(reality) {
 
     return {
-        rotation: reality?.rotation || null,
-        position: reality?.position || null
+
+        position: reality?.position || null,
+
+        rotation: reality?.rotation || null
+
     };
+
 }
 
-function install() {
+
+
+/* ------------------------------------ */
+/*         BUSCAR VIDEO HTML            */
+/* ------------------------------------ */
+
+function updateVideoReference() {
+
+    if (window.CameraVideo) {
+
+        return;
+
+    }
+
+    const video = document.querySelector("video");
+
+    if (video) {
+
+        window.CameraVideo = video;
+
+    }
+
+}
+
+
+
+/* ------------------------------------ */
+/*           INSTALAR BRIDGE            */
+/* ------------------------------------ */
+
+function installBridge() {
 
     if (!window.XR8) {
-        panel.textContent = BRIDGE_VERSION + "\nXR8 not found";
+
+        if (panel) {
+
+            panel.textContent =
+                BRIDGE_VERSION +
+                "\n\nXR8 NOT FOUND";
+
+        }
+
         return;
+
     }
 
     XR8.addCameraPipelineModule({
 
-        name: "bridge-exporter",
+        name: "repofusion-bridge",
 
         onUpdate: ({ processCpuResult }) => {
 
-            const reality = processCpuResult?.reality;
+            updateVideoReference();
 
-            if (!reality) return;
+            const reality =
+                processCpuResult?.reality;
 
-            window.Tracking.camera = extractCamera(reality);
-            window.Tracking.marker = normalizeMarker(reality);
-            window.Tracking.intrinsics = reality.intrinsics || null;
-            window.Tracking.tracking = reality.trackingStatus || "unknown";
+            if (!reality) {
+
+                return;
+
+            }
+
+            window.Tracking.tracking =
+                reality.trackingStatus || "unknown";
+
+            window.Tracking.camera =
+                normalizeCamera(reality);
+
+            window.Tracking.marker =
+                normalizeMarker(reality);
+
+            window.Tracking.intrinsics =
+                reality.intrinsics || null;
+
         }
 
     });
 
-    panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
 }
 
-function render() {
 
-    let out = BRIDGE_VERSION + "\n\n";
 
-    out += "TRACKING: " + window.Tracking.tracking + "\n\n";
+/* ------------------------------------ */
+/*             DEBUG VIEW               */
+/* ------------------------------------ */
 
-    out += "CAMERA:\n";
-    out += JSON.stringify(window.Tracking.camera, null, 2);
+function renderPanel() {
+
+    if (!panel) {
+
+        return;
+
+    }
+
+    let out = "";
+
+    out += BRIDGE_VERSION;
+
     out += "\n\n";
 
-    out += "MARKER:\n";
-    out += JSON.stringify(window.Tracking.marker, null, 2);
-    out += "\n\n";
-
-    out += "INTRINSICS:\n";
-    out += JSON.stringify(window.Tracking.intrinsics, null, 2);
+    out +=
+        "VIDEO: " +
+        (window.CameraVideo ? "YES" : "NO");
 
     out += "\n\n";
 
-    const video = document.querySelector("video");
-    out += "VIDEO: " + (video ? "YES" : "NO");
+    out +=
+        "TRACKING: " +
+        window.Tracking.tracking;
+
+    out += "\n\n";
+
+    out +=
+        "CAMERA\n";
+
+    out +=
+        JSON.stringify(
+            window.Tracking.camera,
+            null,
+            2
+        );
+
+    out += "\n\n";
+
+    out +=
+        "MARKER\n";
+
+    out +=
+        JSON.stringify(
+            window.Tracking.marker,
+            null,
+            2
+        );
+
+    out += "\n\n";
+
+    out +=
+        "INTRINSICS\n";
+
+    out +=
+        JSON.stringify(
+            window.Tracking.intrinsics,
+            null,
+            2
+        );
 
     panel.textContent = out;
+
 }
 
-install();
-setInterval(render, 150);
+
+
+installBridge();
+
+setInterval(renderPanel, 150);
