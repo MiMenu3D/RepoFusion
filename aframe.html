@@ -138,6 +138,36 @@ Env: HDR
 </button>
 
 <div id="lightDebug">LIGHT --</div>
+
+  // =====================================================
+// RepoFusion bridge listener v1.0
+// =====================================================
+
+window.RepoFusion = window.RepoFusion || {};
+
+window.RepoFusion.pose = {
+  camera: null,
+  marker: null,
+  intrinsics: null,
+  tracking: "waiting"
+};
+
+window.RepoFusion.setPose = function (data) {
+
+  if (!data) return;
+
+  window.RepoFusion.pose.camera =
+    data.camera || null;
+
+  window.RepoFusion.pose.marker =
+    data.marker || null;
+
+  window.RepoFusion.pose.intrinsics =
+    data.intrinsics || null;
+
+  window.RepoFusion.pose.tracking =
+    data.tracking || "unknown";
+};
   
 <script>
 let current = 0;
