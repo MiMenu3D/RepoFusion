@@ -1,271 +1,157 @@
-const BRIDGE_VERSION = "Bridge 1.0";
+const BRIDGE_VERSION = "RepoFusion Bridge v1.0";
 
-/*
-    ========================================
+const panel = document.createElement("div");
+panel.style.position = "fixed";
+panel.style.top = "10px";
+panel.style.left = "10px";
+panel.style.background = "rgba(0,0,0,0.82)";
+panel.style.color = "#00ff66";
+panel.style.padding = "10px";
+panel.style.fontFamily = "monospace";
+panel.style.fontSize = "12px";
+panel.style.whiteSpace = "pre";
+panel.style.zIndex = "999999";
+panel.style.maxHeight = "85vh";
+panel.style.overflow = "auto";
 
-    RepoFusion Bridge
+document.body.appendChild(panel);
 
-    8th Wall
-        ↓
-    window.Tracking
-        ↓
-    A-Frame / Three / Debug
-
-    ========================================
-*/
-
-const DEBUG_PANEL = true;
-
-window.Tracking = {
-
-    tracking: "waiting",
-
-    camera: null,
-
-    marker: null,
-
-    intrinsics: null
-
+const fusionState = {
+  tracking: "waiting",
+  camera: null,
+  marker: null,
+  intrinsics: null,
+  video: null
 };
 
-window.CameraVideo = null;
-
-
-
-/* ------------------------------------ */
-/*               PANEL                  */
-/* ------------------------------------ */
-
-let panel = null;
-
-if (DEBUG_PANEL) {
-
-    panel = document.createElement("div");
-
-    panel.style.position = "fixed";
-    panel.style.top = "10px";
-    panel.style.left = "10px";
-
-    panel.style.background = "rgba(0,0,0,0.82)";
-    panel.style.color = "lime";
-
-    panel.style.padding = "10px";
-
-    panel.style.fontFamily = "monospace";
-    panel.style.fontSize = "12px";
-
-    panel.style.whiteSpace = "pre";
-
-    panel.style.maxHeight = "85vh";
-    panel.style.overflow = "auto";
-
-    panel.style.zIndex = "999999";
-
-    document.body.appendChild(panel);
-
-}
-
-
-
-/* ------------------------------------ */
-/*           EXTRAER MARKER             */
-/* ------------------------------------ */
+window.RepoFusion = fusionState;
 
 function normalizeMarker(reality) {
 
-    const img = reality?.detectedImages?.[0];
+  const img = reality?.detectedImages?.[0];
 
-    if (!img) {
+  if (!img) return null;
 
-        return null;
+  return {
 
-    }
+    name: img.name,
 
-    return {
+    position: {
+      x: img.position?.x ?? 0,
+      y: img.position?.y ?? 0,
+      z: img.position?.z ?? 0
+    },
 
-        name: img.name,
+    rotation: {
+      x: img.rotation?.x ?? 0,
+      y: img.rotation?.y ?? 0,
+      z: img.rotation?.z ?? 0,
+      w: img.rotation?.w ?? 1
+    },
 
-        position: img.position || null,
-
-        rotation: img.rotation || null,
-
-        scale: img.scale || 1
-
-    };
-
+    scale: img.scale ?? 1
+  };
 }
-
-
-
-/* ------------------------------------ */
-/*          EXTRAER CAMERA              */
-/* ------------------------------------ */
 
 function normalizeCamera(reality) {
 
-    return {
+  return {
 
-        position: reality?.position || null,
+    position: {
+      x: reality?.position?.x ?? 0,
+      y: reality?.position?.y ?? 0,
+      z: reality?.position?.z ?? 0
+    },
 
-        rotation: reality?.rotation || null
-
-    };
-
-}
-
-
-
-/* ------------------------------------ */
-/*         BUSCAR VIDEO HTML            */
-/* ------------------------------------ */
-
-function updateVideoReference() {
-
-    if (window.CameraVideo) {
-
-        return;
-
+    rotation: {
+      x: reality?.rotation?.x ?? 0,
+      y: reality?.rotation?.y ?? 0,
+      z: reality?.rotation?.z ?? 0,
+      w: reality?.rotation?.w ?? 1
     }
 
-    const video = document.querySelector("video");
-
-    if (video) {
-
-        window.CameraVideo = video;
-
-    }
-
+  };
 }
-
-
-
-/* ------------------------------------ */
-/*           INSTALAR BRIDGE            */
-/* ------------------------------------ */
 
 function installBridge() {
 
-    if (!window.XR8) {
+  if (!window.XR8) {
 
-        if (panel) {
+    panel.textContent =
+      BRIDGE_VERSION + "\n\nXR8 NOT FOUND";
 
-            panel.textContent =
-                BRIDGE_VERSION +
-                "\n\nXR8 NOT FOUND";
+    return;
+  }
 
-        }
+  XR8.addCameraPipelineModule({
 
-        return;
+    name: "repofusion-export",
 
-    }
+    onStart() {
 
-    XR8.addCameraPipelineModule({
+      fusionState.video =
+        document.querySelector("video") || null;
+    },
 
-        name: "repofusion-bridge",
+    onUpdate({processCpuResult}) {
 
-        onUpdate: ({ processCpuResult }) => {
+      const reality = processCpuResult?.reality;
 
-            updateVideoReference();
+      if (!reality) return;
 
-            const reality =
-                processCpuResult?.reality;
+      fusionState.tracking =
+        reality.trackingStatus || "UNKNOWN";
 
-            if (!reality) {
+      fusionState.camera =
+        normalizeCamera(reality);
 
-                return;
+      fusionState.marker =
+        normalizeMarker(reality);
 
-            }
+      fusionState.intrinsics =
+        reality.intrinsics || null;
 
-            window.Tracking.tracking =
-                reality.trackingStatus || "unknown";
+      if (!fusionState.video) {
 
-            window.Tracking.camera =
-                normalizeCamera(reality);
+        fusionState.video =
+          document.querySelector("video") || null;
 
-            window.Tracking.marker =
-                normalizeMarker(reality);
-
-            window.Tracking.intrinsics =
-                reality.intrinsics || null;
-
-        }
-
-    });
-
-}
-
-
-
-/* ------------------------------------ */
-/*             DEBUG VIEW               */
-/* ------------------------------------ */
-
-function renderPanel() {
-
-    if (!panel) {
-
-        return;
+      }
 
     }
 
-    let out = "";
-
-    out += BRIDGE_VERSION;
-
-    out += "\n\n";
-
-    out +=
-        "VIDEO: " +
-        (window.CameraVideo ? "YES" : "NO");
-
-    out += "\n\n";
-
-    out +=
-        "TRACKING: " +
-        window.Tracking.tracking;
-
-    out += "\n\n";
-
-    out +=
-        "CAMERA\n";
-
-    out +=
-        JSON.stringify(
-            window.Tracking.camera,
-            null,
-            2
-        );
-
-    out += "\n\n";
-
-    out +=
-        "MARKER\n";
-
-    out +=
-        JSON.stringify(
-            window.Tracking.marker,
-            null,
-            2
-        );
-
-    out += "\n\n";
-
-    out +=
-        "INTRINSICS\n";
-
-    out +=
-        JSON.stringify(
-            window.Tracking.intrinsics,
-            null,
-            2
-        );
-
-    panel.textContent = out;
+  });
 
 }
 
+function drawPanel() {
 
+  const videoOK =
+    fusionState.video ? "YES" : "NO";
+
+  panel.textContent =
+
+`${BRIDGE_VERSION}
+
+VIDEO : ${videoOK}
+
+TRACK : ${fusionState.tracking}
+
+CAMERA
+
+${JSON.stringify(fusionState.camera, null, 2)}
+
+MARKER
+
+${JSON.stringify(fusionState.marker, null, 2)}
+
+INTRINSICS
+
+${JSON.stringify(fusionState.intrinsics, null, 2)}
+`;
+
+}
 
 installBridge();
 
-setInterval(renderPanel, 150);
+setInterval(drawPanel, 120);
