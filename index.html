@@ -1,77 +1,168 @@
-<!doctype html><html>
-  <head><meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Image Tracking 8th Wall</title><meta itemprop="name" content="Empty Project">
-    <meta name="twitter:title" content="Empty Project">
-    <meta property="og:title" content="Empty Project">
-    <meta property="og:site_name" content="Empty Project">
-    <meta name="description" content="Start with a blank project.">
-    <meta itemprop="description" content="Start with a blank project.">
-    <meta property="og:description" content="Start with a blank project.">
-    <meta name="twitter:description" content="Start with a blank project.">
-    <script crossorigin="anonymous" src="./external/runtime/runtime.js">
-      
-    </script><script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam">
-      
-    </script>
-  </head>
-  
-  <body>
-    <div id="launcher"
-     style="
-       position:fixed;
-       inset:0;
-       background:#0b3d91;
-       display:flex;
-       flex-direction:column;
-       justify-content:center;
-       align-items:center;
-       color:white;
-       font-family:Arial,sans-serif;
-       z-index:99999999;
-     ">
+<!doctype html>
+<html lang="es">
 
-    <h1>RepoClean</h1>
+<head>
 
-    <h2></h2>
+<meta charset="UTF-8">
 
-    <button id="startButton"
-            style="
-              font-size:30px;
-              padding:20px 40px;
-            ">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>RepoFusion</title>
+
+<meta name="description"
+      content="RepoFusion v1.0">
+
+<script
+  crossorigin="anonymous"
+  src="./external/runtime/runtime.js">
+</script>
+
+<script
+  crossorigin="anonymous"
+  src="./external/xr/xr.js"
+  async="true"
+  data-preload-chunks="face, slam">
+</script>
+
+<style>
+
+html,
+body{
+
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#0b3d91;
+
+}
+
+#launcher{
+
+    position:fixed;
+
+    inset:0;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:#0b3d91;
+
+    color:white;
+
+    font-family:Arial,sans-serif;
+
+    z-index:99999999;
+
+}
+
+#launcher h1{
+
+    margin:0;
+
+    font-size:54px;
+
+}
+
+#launcher h2{
+
+    margin-top:18px;
+
+    font-weight:normal;
+
+    opacity:0.8;
+
+}
+
+#startButton{
+
+    margin-top:50px;
+
+    font-size:30px;
+
+    padding:20px 40px;
+
+    cursor:pointer;
+
+}
+
+#versionTag{
+
+    position:fixed;
+
+    left:10px;
+
+    bottom:10px;
+
+    color:white;
+
+    font-family:monospace;
+
+    font-size:13px;
+
+    opacity:0.6;
+
+    z-index:999999999;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="launcher">
+
+    <h1>RepoFusion</h1>
+
+    <h2 id="versionText"></h2>
+
+    <button id="startButton">
+
         Abrir AR
+
     </button>
 
 </div>
 
-  <div id="versionTag"></div>
-  
- 
-    <script>
+<div id="versionTag"></div>
+
+<script>
+
+const VERSION = "RepoFusion v1.0";
+
+document.getElementById("versionText").textContent = VERSION;
+
+document.getElementById("versionTag").textContent = VERSION;
 
 document.getElementById("startButton").onclick = () => {
 
     document.getElementById("launcher").remove();
 
     const bundle = document.createElement("script");
+
     bundle.src = "bundle.js";
+
     document.body.appendChild(bundle);
 
     const bridge = document.createElement("script");
+
     bridge.src = "bridge.js?t=" + Date.now();
+
     document.body.appendChild(bridge);
 
 };
 
 </script>
 
-<script>
-const VERSION = "v84.1";
-
-document.querySelector("#launcher h2").textContent = VERSION;
-document.getElementById("versionTag").textContent = "RepoClean " + VERSION;
-</script>
-    
 </body>
+
 </html>
