@@ -1,5 +1,117 @@
 const REPOFUSION_VERSION = "RepoFusion v2.0";
 
+document.body.insertAdjacentHTML("beforeend", `
+
+<div id="mvContainer"></div>
+
+<div id="startScreen">
+  <div id="prueba">Prueba Fusion 1.0 HDR</div>
+  <div id="label">Plato 01</div>
+
+  <div class="arrowContainer">
+    <button class="arrow" onclick="prev()">←</button>
+    <button class="arrow" onclick="next()">→</button>
+  </div>
+
+  <button class="button" onclick="startAR()">
+    Ver en tu mesa
+  </button>
+</div>
+
+<div id="arContainer"></div>
+
+<button id="envToggle"
+        onclick="toggleEnv()">
+  Env: HDR
+</button>
+
+<div id="lightDebug">
+  LIGHT --
+</div>
+
+`);
+
+const style = document.createElement("style");
+
+style.textContent = `
+
+#prueba{
+  font-size:22px;
+  color:white;
+  text-shadow:0 0 10px black;
+  margin-bottom:12px;
+}
+
+#mvContainer{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:40%;
+  background:#1f1a17;
+  z-index:40;
+}
+
+#startScreen{
+  position:fixed;
+  top:40%;
+  left:0;
+  right:0;
+  bottom:0;
+  background:url("Loading screen.png") center/cover no-repeat;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  align-items:center;
+  padding-bottom:20%;
+  z-index:30;
+}
+
+.arrowContainer{
+  display:flex;
+  gap:20px;
+  margin-bottom:10px;
+}
+
+.arrow{
+  font-size:28px;
+  padding:10px 16px;
+}
+
+.button{
+  padding:14px 28px;
+  border-radius:30px;
+}
+
+#arContainer{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:51;
+}
+
+#envToggle{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  z-index:99999;
+}
+
+#lightDebug{
+  position:fixed;
+  top:20px;
+  left:20px;
+  z-index:99999;
+  color:white;
+  font-size:22px;
+  display:none;
+  white-space:pre;
+}
+
+`;
+
+document.head.appendChild(style);
+
 let current = 0;
 let envEnabled = true;
 let originalEnv = null;
