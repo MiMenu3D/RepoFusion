@@ -1,4 +1,4 @@
-const REPOFUSION_VERSION = "RepoFusion v2.1";
+const REPOFUSION_VERSION = "RepoFusion v2.2";
 
 document.body.insertAdjacentHTML("beforeend", `
 
@@ -408,16 +408,32 @@ function next(){
   updateMV();
 }
 
+function hideLauncher(){
+
+  const launcher = document.getElementById("launcher");
+
+  if (launcher){
+    launcher.style.display = "none";
+  }
+
+}
+
 function startAR(){
+  hideLauncher();
   history.pushState({mode:"ar", current}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
-  console.log("RepoFusion v2.1 - startAR");
+  console.log("RepoFusion v2.2 - startAR");
   createAR();
 }
 
 function stopAR(){
+  const launcher = document.getElementById("launcher");
+
+if (launcher){
+  launcher.style.display = "flex";
+}
   destroyAR();
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning")
