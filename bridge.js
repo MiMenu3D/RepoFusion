@@ -1,4 +1,4 @@
-const REPOFUSION_VERSION = "RepoFusion v2.0";
+const REPOFUSION_VERSION = "RepoFusion v2.1";
 
 document.body.insertAdjacentHTML("beforeend", `
 
@@ -199,7 +199,6 @@ function createAR(){
 
   container.innerHTML = `
     <a-scene
-      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
@@ -207,7 +206,7 @@ function createAR(){
 
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity id="trackingRoot">
         <a-gltf-model
           id="aframeModel"
           src="${models[current]}"
@@ -325,7 +324,7 @@ envInterval = setInterval(() => {
     cameraRT.texture;
 
 }
-  const target = document.querySelector("[mindar-image-target]");
+  const target = document.getElementById("trackingRoot");
 
 if (target) {
 
@@ -333,7 +332,7 @@ if (target) {
 const q = target.object3D.quaternion;
 const s = target.object3D.scale;
 
-  target.object3D.matrixWorld.decompose(p, q, s);
+  // target.object3D.matrixWorld.decompose(p, q, s);
   
   prueba.innerText =
 `LIGHT ${Math.round(smoothed)} | EXP ${exposure.toFixed(2)}
@@ -414,6 +413,7 @@ function startAR(){
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
+  console.log("RepoFusion v2.1 - startAR");
   createAR();
 }
 
@@ -470,3 +470,44 @@ function toggleEnv(){
 
   }
 }
+
+// =====================================================
+// RepoFusion - 8th Wall tracking bridge
+// =====================================================
+
+XR8.addCameraPipelineModule({
+
+  name: "repofusion-tracking",
+
+  onUpdate({ processCpuResult }) {
+
+    const img =
+      processCpuResult?.reality?.detectedImages?.[0];
+
+    if (!img) return;
+
+    const root =
+      document.getElementById("trackingRoot");
+
+    if (!root) return;
+
+    const o = root.object3D;
+
+    o.position.set(
+      img.position.x,
+      img.position.y,
+      img.position.z
+    );
+
+    o.quaternion.set(
+      img.rotation.x,
+      img.rotation.y,
+      img.rotation.z,
+      img.rotation.w
+    );
+
+    o.scale.setScalar(img.scale);
+
+  }
+
+});
