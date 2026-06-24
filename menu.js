@@ -1,4 +1,4 @@
-// Menu module v1.3
+// Menu module v1.4
 // Generated as part of the AR refactor.
 // version 1.3
 

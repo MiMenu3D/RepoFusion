@@ -1,5 +1,5 @@
 const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
-// version 87.3
+// version 87.4
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
