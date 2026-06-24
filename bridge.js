@@ -2,6 +2,7 @@ const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
 // version 87.3
 
 const panel = document.createElement("div");
+panel.id = "bridgeDebugPanel";
 panel.style.position = "fixed";
 panel.style.top = "10px";
 panel.style.left = "10px";

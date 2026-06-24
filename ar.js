@@ -17,6 +17,8 @@ let xrLoadPromise = null;
 let envTexture = null;
 let envCanvas = null;
 let video = null;
+let markerFound = false;
+let scanOverlay = null;
 
 function loadScript({ id, src, async = false, attrs = {} }) {
   if (document.getElementById(id)) return;
@@ -51,6 +53,8 @@ function waitForXR8() {
 }
 
 function createARScene(modelSrc) {
+  markerFound = false;
+  scanOverlay = null;
   const container = document.getElementById("arContainer");
   container.style.background = "transparent";
   container.innerHTML = `
@@ -64,22 +68,56 @@ function createARScene(modelSrc) {
       device-orientation-permission-ui="enabled:false">
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
       <a-entity id="trackingRoot">
-        <a-gltf-model id="aframeModel" src="${modelSrc}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
+        <a-gltf-model id="aframeModel" src="${modelSrc}" rotation="90 0 0" scale="1 1 1" visible="false"></a-gltf-model>
       </a-entity>
     </a-scene>`;
 
+  scanOverlay = document.createElement("div");
+  scanOverlay.id = "mindarScanningOverlay";
+  scanOverlay.className = "mindar-ui-scanning";
+  scanOverlay.innerHTML = `<div>Escaneando marcador...</div>`;
+  container.appendChild(scanOverlay);
+
   const sceneEl = container.querySelector("a-scene");
-  sceneEl.addEventListener("loaded", () => {
+
+  const onSceneReady = () => {
     if (arIntervalId) {
       clearInterval(arIntervalId);
     }
     arIntervalId = setInterval(() => {
       const root = document.getElementById("trackingRoot");
-      if (!root || !window.RepoFusion || !window.RepoFusion.pose.marker) return;
+      const model = document.getElementById("aframeModel");
+      if (!root || !window.RepoFusion) return;
       const marker = window.RepoFusion.pose.marker;
-      if (!marker.position || !marker.rotation) return;
-      root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-      root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      const hasMarker = marker && marker.position && marker.rotation;
+
+      if (hasMarker) {
+        const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
+        const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+        const targetScale = Math.max(marker.scale || 1, 0.0001);
+
+        if (!markerFound) {
+          markerFound = true;
+          if (model) model.setAttribute("visible", true);
+          if (scanOverlay) scanOverlay.style.display = "none";
+
+          root.object3D.position.copy(targetPosition);
+          root.object3D.quaternion.copy(targetQuat);
+          root.object3D.scale.setScalar(targetScale);
+        } else {
+          root.object3D.position.lerp(targetPosition, 0.35);
+          root.object3D.quaternion.slerp(targetQuat, 0.35);
+
+          const currentScale = root.object3D.scale.x || 1;
+          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
+        }
+      } else {
+        if (markerFound) {
+          markerFound = false;
+          if (model) model.setAttribute("visible", false);
+          if (scanOverlay) scanOverlay.style.display = "flex";
+        }
+      }
     }, 30);
 
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
@@ -129,7 +167,7 @@ function createARScene(modelSrc) {
       }
     }, 500);
 
-    new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
+    new THREE.RGBELoader().load("./HDR/terrace_sea.hdr", (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
@@ -139,6 +177,8 @@ function createARScene(modelSrc) {
       sceneEl.renderer.setClearColor(0x000000, 0);
     }
     sceneEl.setAttribute('background', 'color: transparent');
+
+    onSceneReady();
 
     if (sceneEl.hasLoaded) {
       sceneEl.emit("runreality");
@@ -157,7 +197,12 @@ function destroyARScene() {
     clearInterval(arIntervalId);
     arIntervalId = null;
   }
-  document.getElementById("arContainer").innerHTML = "";
+  markerFound = false;
+  scanOverlay = null;
+  const container = document.getElementById("arContainer");
+  if (container) {
+    container.innerHTML = "";
+  }
 }
 
 function startAR(modelSrc) {
@@ -172,12 +217,22 @@ function stopAR() {
     try { window.XR8.pause(); } catch (err) { console.warn("XR8.pause failed:", err); }
     try { window.XR8.stop(); } catch (err) { console.warn("XR8.stop failed:", err); }
     try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
-    const videoEl = document.querySelector("video");
-    if (videoEl) {
-      videoEl.style.display = "none";
-      videoEl.srcObject = null;
-    }
   }
+
+  const videos = document.querySelectorAll("video");
+  videos.forEach((videoEl) => {
+    try {
+      videoEl.pause();
+      videoEl.style.display = "none";
+      if (videoEl.srcObject && videoEl.srcObject.getTracks) {
+        videoEl.srcObject.getTracks().forEach((track) => track.stop());
+      }
+      videoEl.srcObject = null;
+    } catch (err) {
+      console.warn("Error cleaning video element:", err);
+    }
+  });
+
   destroyARScene();
   xrLoadPromise = null;
   envMode = "hdr";
