@@ -31,7 +31,7 @@ function loadScript({ id, src, async = false, attrs = {} }) {
 function loadXR8Assets() {
   loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
   loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
-  loadScript({ id: "bundleScript", src: "bundle.js" });
+  loadScript({ id: "xrConfigScript", src: "xr-config.js" });
   loadScript({ id: "bridgeScript", src: "bridge.js?t=" + Date.now() });
 }
 
@@ -90,6 +90,14 @@ function createARScene(modelSrc) {
       if (candidate && candidate.readyState >= 2) {
         clearInterval(waitForVideo);
         video = candidate;
+        video.style.position = "fixed";
+        video.style.top = "0";
+        video.style.left = "0";
+        video.style.width = "100%";
+        video.style.height = "100%";
+        video.style.objectFit = "cover";
+        video.style.zIndex = "50";
+        video.style.pointerEvents = "none";
         cameraEnv = new THREE.VideoTexture(video);
         cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
@@ -127,6 +135,11 @@ function createARScene(modelSrc) {
       sceneEl.object3D.environment = hdr;
     });
 
+    if (sceneEl.renderer) {
+      sceneEl.renderer.setClearColor(0x000000, 0);
+    }
+    sceneEl.setAttribute('background', 'color: transparent');
+
     if (sceneEl.hasLoaded) {
       sceneEl.emit("runreality");
     } else {
@@ -158,13 +171,16 @@ function stopAR() {
   if (window.XR8) {
     try { window.XR8.pause(); } catch (err) { console.warn("XR8.pause failed:", err); }
     try { window.XR8.stop(); } catch (err) { console.warn("XR8.stop failed:", err); }
-    if (window.XR8.clearCameraPipelineModules) {
-      try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
-    }
+    try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
     const videoEl = document.querySelector("video");
-    if (videoEl) videoEl.srcObject = null;
+    if (videoEl) {
+      videoEl.style.display = "none";
+      videoEl.srcObject = null;
+    }
   }
   destroyARScene();
+  xrLoadPromise = null;
+  envMode = "hdr";
 }
 
 window.AR.isReady = true;
