@@ -1,4 +1,4 @@
-const BRIDGE_VERSION = "Bridge v85.0 (Tracking API)";
+const BRIDGE_VERSION = "Bridge v87.0 (Tracking API)";
 
 const panel = document.createElement("div");
 panel.style.position = "fixed";
