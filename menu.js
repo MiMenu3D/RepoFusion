@@ -1,6 +1,6 @@
 // Menu module v1.3 v101
 // Generated as part of the AR refactor.
-// version 1.4 v101.2
+// version v101.3
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -111,8 +111,8 @@ function ensureARModule() {
 
     const script = document.createElement("script");
     script.id = "arModuleScript";
-    script.src = "./ar.js";
-    script.async = false;
+    script.src = "ar.js";
+    script.defer = true;
     script.onload = finish;
     script.onerror = () => reject(new Error("Failed to load ar.js"));
     document.body.appendChild(script);
@@ -166,17 +166,8 @@ window.toggleEnv = function() {
   }
 };
 
-window.startAR = startAR;
-window.prev = prev;
-window.next = next;
-window.stopAR = stopAR;
-
 window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({mode:"menu", current}, "");
   document.getElementById("envToggle").style.display = "none";
   createMV();
-  const startButton = document.getElementById("startARButton");
-  if (startButton) {
-    startButton.addEventListener("click", startAR);
-  }
 });
