@@ -1,6 +1,6 @@
-// AR module v1.3
+// AR module v1.3 v101
 // Generated as part of the AR refactor.
-// version 1.3
+// version 1.3 v101
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -100,17 +100,11 @@ function createARScene(modelSrc) {
           markerFound = true;
           if (model) model.setAttribute("visible", true);
           if (scanOverlay) scanOverlay.style.display = "none";
-
-          root.object3D.position.copy(targetPosition);
-          root.object3D.quaternion.copy(targetQuat);
-          root.object3D.scale.setScalar(targetScale);
-        } else {
-          root.object3D.position.lerp(targetPosition, 0.35);
-          root.object3D.quaternion.slerp(targetQuat, 0.35);
-
-          const currentScale = root.object3D.scale.x || 1;
-          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
         }
+
+        root.object3D.position.copy(targetPosition);
+        root.object3D.quaternion.copy(targetQuat);
+        root.object3D.scale.setScalar(targetScale);
       } else {
         if (markerFound) {
           markerFound = false;
@@ -178,14 +172,15 @@ function createARScene(modelSrc) {
     }
     sceneEl.setAttribute('background', 'color: transparent');
 
-    onSceneReady();
-
     if (sceneEl.hasLoaded) {
+      onSceneReady();
       sceneEl.emit("runreality");
     } else {
-      sceneEl.addEventListener("loaded", () => sceneEl.emit("runreality"), { once: true });
+      sceneEl.addEventListener("loaded", () => {
+        onSceneReady();
+        sceneEl.emit("runreality");
+      }, { once: true });
     }
-  }, {once:true});
 }
 
 function destroyARScene() {
