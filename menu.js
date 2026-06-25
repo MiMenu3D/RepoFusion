@@ -1,6 +1,6 @@
-// Menu module v1.1
+// Menu module v1.3
 // Generated as part of the AR refactor.
-// version 1.1
+// version 1.2
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -69,6 +69,22 @@ function destroyMV(){
   mv = null;
 }
 
+function prev(){
+  current = (current - 1 + models.length) % models.length;
+  if (!mv) {
+    createMV();
+  }
+  updateMV();
+}
+
+function next(){
+  current = (current + 1) % models.length;
+  if (!mv) {
+    createMV();
+  }
+  updateMV();
+}
+
 function ensureARModule() {
   return new Promise((resolve, reject) => {
     if (window.AR && window.AR.isReady) {
@@ -109,6 +125,9 @@ function startAR(){
     destroyMV();
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
+    document.body.style.background = "transparent";
+    const envToggle = document.getElementById("envToggle");
+    if (envToggle) envToggle.style.display = "block";
     AR.startAR(models[current]).catch((err) => {
       console.warn("AR.startAR failed:", err);
     });
@@ -127,11 +146,19 @@ function stopAR(){
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
   document.getElementById("arContainer").style.display = "none";
+  const envToggle = document.getElementById("envToggle");
+  if (envToggle) envToggle.style.display = "none";
+  document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
   createMV();
+  history.replaceState({mode:"menu", current}, "");
 }
 
-window.addEventListener("popstate", () => stopAR());
+window.addEventListener("popstate", (event) => {
+  if (!event.state || event.state.mode !== "ar") {
+    stopAR();
+  }
+});
 
 window.toggleEnv = function() {
   if (window.AR && typeof window.AR.toggleEnv === "function") {
@@ -140,5 +167,7 @@ window.toggleEnv = function() {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
+  history.replaceState({mode:"menu", current}, "");
+  document.getElementById("envToggle").style.display = "none";
   createMV();
 });
