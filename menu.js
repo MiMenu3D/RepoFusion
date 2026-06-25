@@ -1,4 +1,4 @@
-// Menu module v1.3
+// Menu module v1.2
 // Generated as part of the AR refactor.
 // version 1.2
 
@@ -69,22 +69,6 @@ function destroyMV(){
   mv = null;
 }
 
-function prev(){
-  current = (current - 1 + models.length) % models.length;
-  if (!mv) {
-    createMV();
-  }
-  updateMV();
-}
-
-function next(){
-  current = (current + 1) % models.length;
-  if (!mv) {
-    createMV();
-  }
-  updateMV();
-}
-
 function ensureARModule() {
   return new Promise((resolve, reject) => {
     if (window.AR && window.AR.isReady) {
@@ -125,7 +109,6 @@ function startAR(){
     destroyMV();
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
-    document.body.style.background = "transparent";
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
     AR.startAR(models[current]).catch((err) => {
@@ -148,7 +131,6 @@ function stopAR(){
   document.getElementById("arContainer").style.display = "none";
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
-  document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
   createMV();
   history.replaceState({mode:"menu", current}, "");
