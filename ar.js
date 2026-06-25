@@ -1,6 +1,6 @@
-// AR module v1.2
+// AR module v1.1
 // Generated as part of the AR refactor.
-// version 1.2
+// version 1.1
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -52,14 +52,12 @@ function waitForXR8() {
 
 function createARScene(modelSrc) {
   const container = document.getElementById("arContainer");
-  container.style.background = "transparent";
   container.innerHTML = `
     <a-scene
       xrweb
       xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
-      embedded
       vr-mode-ui="enabled:false"
       device-orientation-permission-ui="enabled:false">
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
