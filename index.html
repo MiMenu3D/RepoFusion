@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 160.3 - Back to monolithic (v3.1 base without xrweb) -->
+<!-- version 160.4 - Back to monolithic (v3.1 base without xrweb) -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -161,7 +161,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 160.3</div>
+  <div id="prueba">Prueba Fusion 160.4</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -178,7 +178,7 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v160.3
+<div id="versionPanel">VERSION v160.4
 Monolithic | No xrweb</div>
 
 <script>
@@ -186,7 +186,7 @@ Monolithic | No xrweb</div>
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "160.3";
+window.RepoFusionVersions.index = "160.4";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -430,63 +430,48 @@ function destroyARScene(){
 function startAR(){
   console.log("[AR] startAR called");
   
-  // --- LOAD 8TH WALL SCRIPTS DIRECTLY (v3.1 working method) ---
-  const runtime = document.createElement("script");
-  runtime.src = "./external/runtime/runtime.js";
-  document.body.appendChild(runtime);
-  console.log("[AR] Loading runtime.js");
-
-  const xr = document.createElement("script");
-  xr.src = "./external/xr/xr.js";
-  xr.setAttribute("async", "true");
-  xr.setAttribute("data-preload-chunks", "face, slam");
-  document.body.appendChild(xr);
-  console.log("[AR] Loading xr.js");
-  
-  const bundle = document.createElement("script");
-  bundle.src = "bundle.js";
-  document.body.appendChild(bundle);
-  console.log("[AR] Loading bundle.js");
-
-  const bridge = document.createElement("script");
-  bridge.src = "bridge.js?t=" + Date.now();
-  document.body.appendChild(bridge);
-  console.log("[AR] Loading bridge.js");
-
-  // --- START XR8 WHEN READY ---
-  const runXR = () => {
-    console.log("[AR] XR8 ready, calling XR8.run()");
-    if (window.XR8) {
-      try {
-        window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-        console.log("[AR] XR8.run() executed");
-      } catch (err) {
-        console.error("[AR] XR8.run() failed:", err);
-      }
-    } else {
-      console.error("[AR] window.XR8 not available");
-    }
-  };
-
-  // Check if XR8 is already loaded
-  if (window.XR8) {
-    console.log("[AR] XR8 already available, running immediately");
-    runXR();
-  } else {
-    console.log("[AR] Waiting for xrloaded event");
-    window.addEventListener("xrloaded", runXR, { once: true });
-  }
-
-  // --- SETUP AR UI ---
+  // --- SETUP AR UI FIRST ---
   history.pushState({mode:"ar", current}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
+
+  // --- LOAD 8TH WALL SCRIPTS ---
+  const runtime = document.createElement("script");
+  runtime.src = "./external/runtime/runtime.js";
+  document.body.appendChild(runtime);
+
+  const xr = document.createElement("script");
+  xr.src = "./external/xr/xr.js";
+  xr.setAttribute("async", "true");
+  xr.setAttribute("data-preload-chunks", "face, slam");
+  document.body.appendChild(xr);
   
-  console.log("[AR] Creating AR scene");
-  createARScene();
+  const bundle = document.createElement("script");
+  bundle.src = "bundle.js";
+  document.body.appendChild(bundle);
+
+  const bridge = document.createElement("script");
+  bridge.src = "bridge.js?t=" + Date.now();
+  document.body.appendChild(bridge);
+
+  // --- WAIT FOR XR8 LOADED, THEN CREATE SCENE AND RUN ---
+  const runXR = () => {
+    console.log("[AR] xrloaded event received");
+    createARScene();
+    if (window.XR8) {
+      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+      console.log("[AR] XR8.run() called");
+    }
+  };
+
+  if (window.XR8) {
+    runXR();
+  } else {
+    window.addEventListener("xrloaded", runXR, { once: true });
+  }
 }
 
 function stopAR(){
@@ -584,7 +569,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v160.3\n";
+  let versionText = "VERSION v160.4\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
