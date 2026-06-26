@@ -1,9 +1,10 @@
-// Menu module v150.1
+// Menu module v150.4
 // Generated as part of the AR refactor.
-// version 150.1
+// version 150.4
 
-// Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
+window.RepoFusionVersions = window.RepoFusionVersions || {};
+window.RepoFusionVersions.menu = "150.4";
 window.RepoFusion.pose = {
   camera: null,
   marker: null,
@@ -21,6 +22,7 @@ window.RepoFusion.setPose = function (data) {
 
 let current = 0;
 let mv = null;
+let isARActive = false;
 const menuNodes = { startScreen: null, mvContainer: null };
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
@@ -70,6 +72,71 @@ function destroyMV(){
   mv = null;
 }
 
+function getVersionValue(name) {
+  return window.RepoFusionVersions && window.RepoFusionVersions[name]
+    ? window.RepoFusionVersions[name]
+    : "unknown";
+}
+
+function updateVersionList(list) {
+  list.textContent =
+    `index.html: ${getVersionValue("index")}\n` +
+    `menu.js: ${getVersionValue("menu")}\n` +
+    `bridge.js: ${getVersionValue("bridge")}\n` +
+    `ar.js: ${getVersionValue("ar")}\n`;
+}
+
+function createVersionPanel() {
+  if (document.getElementById("versionPanel")) return;
+  const startScreen = document.getElementById("startScreen");
+  if (!startScreen) return;
+  const panel = document.createElement("div");
+  panel.id = "versionPanel";
+  panel.style.position = "absolute";
+  panel.style.top = "10px";
+  panel.style.left = "10px";
+  panel.style.right = "10px";
+  panel.style.zIndex = "100";
+  panel.style.color = "white";
+  panel.style.fontSize = "12px";
+  panel.style.textAlign = "left";
+
+  const button = document.createElement("button");
+  button.id = "versionToggle";
+  button.textContent = "Versiones";
+  button.style.background = "rgba(255,255,255,0.1)";
+  button.style.color = "white";
+  button.style.border = "1px solid white";
+  button.style.borderRadius = "12px";
+  button.style.padding = "6px 10px";
+  button.style.marginBottom = "8px";
+  button.style.width = "auto";
+  button.style.cursor = "pointer";
+
+  const list = document.createElement("div");
+  list.id = "versionList";
+  list.style.display = "none";
+  list.style.background = "rgba(0,0,0,0.7)";
+  list.style.padding = "10px";
+  list.style.borderRadius = "12px";
+  list.style.whiteSpace = "pre-wrap";
+  list.style.textAlign = "left";
+  updateVersionList(list);
+
+  button.addEventListener("click", () => {
+    if (list.style.display === "none") {
+      updateVersionList(list);
+      list.style.display = "block";
+    } else {
+      list.style.display = "none";
+    }
+  });
+
+  panel.appendChild(button);
+  panel.appendChild(list);
+  startScreen.insertBefore(panel, startScreen.firstChild);
+}
+
 function detachMenuNodes() {
   const startScreen = document.getElementById("startScreen");
   const mvContainer = document.getElementById("mvContainer");
@@ -85,6 +152,7 @@ function detachMenuNodes() {
 
 function restoreMenuNodes() {
   const arContainer = document.getElementById("arContainer");
+  if (!arContainer) return;
   if (menuNodes.startScreen && !document.getElementById("startScreen")) {
     document.body.insertBefore(menuNodes.startScreen, arContainer);
   }
@@ -152,8 +220,10 @@ function startAR(){
     document.body.style.background = "transparent";
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
+    isARActive = true;
     AR.startAR(models[current]).catch((err) => {
       console.warn("AR.startAR failed:", err);
+      isARActive = false;
       restoreMenuNodes();
       createMV();
       history.replaceState({mode:"menu", current}, "");
@@ -164,6 +234,7 @@ function startAR(){
 }
 
 function stopAR(){
+  isARActive = false;
   if (window.AR && typeof window.AR.stopAR === "function") {
     window.AR.stopAR();
   }
@@ -172,8 +243,23 @@ function stopAR(){
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
-  document.getElementById("arContainer").innerHTML = "";
-  document.getElementById("arContainer").style.display = "none";
+  const arContainer = document.getElementById("arContainer");
+  if (arContainer) {
+    arContainer.innerHTML = "";
+    arContainer.style.display = "none";
+  }
+  const xrMedia = Array.from(document.querySelectorAll("video, canvas"));
+  xrMedia.forEach((node) => {
+    if (node.closest("#mvContainer") || node.closest("#versionPanel")) return;
+    try {
+      if (node.tagName === "VIDEO" && node.srcObject) {
+        node.srcObject = null;
+      }
+    } catch (err) {
+      console.warn("error clearing XR media node", err);
+    }
+    node.remove();
+  });
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
   document.body.style.background = "#1f1a17";
@@ -182,10 +268,8 @@ function stopAR(){
   history.replaceState({mode:"menu", current}, "");
 }
 
-window.addEventListener("popstate", (event) => {
-  if (!event.state || event.state.mode !== "ar") {
-    stopAR();
-  }
+window.addEventListener("popstate", () => {
+  stopAR();
 });
 
 window.toggleEnv = function() {
@@ -197,5 +281,6 @@ window.toggleEnv = function() {
 window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({mode:"menu", current}, "");
   document.getElementById("envToggle").style.display = "none";
+  createVersionPanel();
   createMV();
 });

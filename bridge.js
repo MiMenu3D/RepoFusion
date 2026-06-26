@@ -1,5 +1,8 @@
-const BRIDGE_VERSION = "Bridge v150.1 (Tracking API)";
-// version 150.1
+const BRIDGE_VERSION = "Bridge v150.4 (Tracking API)";
+// version 150.4
+
+window.RepoFusionVersions = window.RepoFusionVersions || {};
+window.RepoFusionVersions.bridge = "150.4";
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
