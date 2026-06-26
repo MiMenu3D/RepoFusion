@@ -123,6 +123,7 @@ function startAR(){
   ensureARModule().then((AR) => {
     history.pushState({mode:"ar", current}, "");
     destroyMV();
+    document.getElementById("mvContainer").style.display = "none";
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
     document.body.style.background = "transparent";
@@ -150,6 +151,7 @@ function stopAR(){
   if (envToggle) envToggle.style.display = "none";
   document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
+  document.getElementById("mvContainer").style.display = "block";
   createMV();
   history.replaceState({mode:"menu", current}, "");
 }
