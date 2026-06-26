@@ -1,6 +1,6 @@
-// Menu module v1.3
+// Menu module v150.1
 // Generated as part of the AR refactor.
-// version 1.2
+// version 150.1
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -21,6 +21,7 @@ window.RepoFusion.setPose = function (data) {
 
 let current = 0;
 let mv = null;
+const menuNodes = { startScreen: null, mvContainer: null };
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
   "Plato_05.glb","Plato_06.glb","Plato_07.glb","Plato_08.glb",
@@ -67,6 +68,29 @@ function updateMV(){
 function destroyMV(){
   document.getElementById("mvContainer").innerHTML = "";
   mv = null;
+}
+
+function detachMenuNodes() {
+  const startScreen = document.getElementById("startScreen");
+  const mvContainer = document.getElementById("mvContainer");
+  if (startScreen) {
+    menuNodes.startScreen = startScreen;
+    startScreen.remove();
+  }
+  if (mvContainer) {
+    menuNodes.mvContainer = mvContainer;
+    mvContainer.remove();
+  }
+}
+
+function restoreMenuNodes() {
+  const arContainer = document.getElementById("arContainer");
+  if (menuNodes.startScreen && !document.getElementById("startScreen")) {
+    document.body.insertBefore(menuNodes.startScreen, arContainer);
+  }
+  if (menuNodes.mvContainer && !document.getElementById("mvContainer")) {
+    document.body.insertBefore(menuNodes.mvContainer, arContainer);
+  }
 }
 
 function prev(){
@@ -123,14 +147,16 @@ function startAR(){
   ensureARModule().then((AR) => {
     history.pushState({mode:"ar", current}, "");
     destroyMV();
-    document.getElementById("mvContainer").style.display = "none";
-    document.getElementById("startScreen").style.display = "none";
+    detachMenuNodes();
     document.getElementById("arContainer").style.display = "block";
     document.body.style.background = "transparent";
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
     AR.startAR(models[current]).catch((err) => {
       console.warn("AR.startAR failed:", err);
+      restoreMenuNodes();
+      createMV();
+      history.replaceState({mode:"menu", current}, "");
     });
   }).catch((err) => {
     console.warn("No se pudo cargar el módulo AR:", err);
@@ -146,12 +172,12 @@ function stopAR(){
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
+  document.getElementById("arContainer").innerHTML = "";
   document.getElementById("arContainer").style.display = "none";
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
   document.body.style.background = "#1f1a17";
-  document.getElementById("startScreen").style.display = "flex";
-  document.getElementById("mvContainer").style.display = "block";
+  restoreMenuNodes();
   createMV();
   history.replaceState({mode:"menu", current}, "");
 }
