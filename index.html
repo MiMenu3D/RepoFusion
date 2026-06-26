@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 160.5 - Removed MindAR script (was interfering with XR8) -->
+<!-- version 161.0 - XR8 first, then A-Frame (800ms delay) -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 160.5</div>
+  <div id="prueba">Prueba Fusion 161.0</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v160.5
-No MindAR interference</div>
+<div id="versionPanel">VERSION v161.0
+XR8 first, A-Frame 800ms after</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "160.5";
+window.RepoFusionVersions.index = "161.0";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -456,13 +456,17 @@ function startAR(){
   bridge.src = "bridge.js?t=" + Date.now();
   document.body.appendChild(bridge);
 
-  // --- WAIT FOR XR8 LOADED, THEN CREATE SCENE AND RUN ---
+  // --- WAIT FOR XR8 LOADED, START IT FIRST, THEN A-FRAME ---
   const runXR = () => {
     console.log("[AR] xrloaded event received");
-    createARScene();
     if (window.XR8) {
       window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-      console.log("[AR] XR8.run() called");
+      console.log("[AR] XR8.run() called - waiting for video...");
+      // WAIT FOR VIDEO TO BE CREATED BEFORE CREATING A-FRAME
+      setTimeout(() => {
+        console.log("[AR] Creating A-Frame scene...");
+        createARScene();
+      }, 800);
     }
   };
 
@@ -568,7 +572,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v160.5\n";
+  let versionText = "VERSION v161.0\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
