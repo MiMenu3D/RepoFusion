@@ -82,7 +82,9 @@ function updateVersionList(list) {
     `index.html: ${getVersionValue("index")}\n` +
     `menu.js: ${getVersionValue("menu")}\n` +
     `bridge.js: ${getVersionValue("bridge")}\n` +
-    `ar.js: ${getVersionValue("ar")}\n`;
+    `ar.js: ${getVersionValue("ar")}\n` +
+    `aframe_app: ${getVersionValue("aframe_app")}\n` +
+    `xr_config: ${getVersionValue("xr_config")}\n`;
 }
 
 function createVersionPanel() {
@@ -123,7 +125,10 @@ function createVersionPanel() {
   updateVersionList(list);
 
   button.addEventListener("click", () => {
-    updateVersionList(list);
+    // Delay para permitir que scripts cargados dinámicamente (bridge.js, ar.js) se registren
+    setTimeout(() => {
+      updateVersionList(list);
+    }, 500);
     list.style.display = list.style.display === "none" ? "block" : "none";
   });
 
