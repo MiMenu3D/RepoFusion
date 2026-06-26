@@ -1,14 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 164xx - PURO: A-Frame + 8th Wall tracking, video only for PMREM -->
+<!-- version 167 - Menu deferred: A-Frame + RGBELoader only load on startAR() -->
 
-<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
-<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js" async></script>
 
 <style>
 #prueba {
@@ -160,7 +158,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 164xx</div>
+  <div id="prueba">Prueba Fusion 167</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +175,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v164
-A-Frame + 8th Wall tracking, video only for PMREM</div>
+<div id="versionPanel">VERSION v167
+Menu deferred, A-Frame loads on startAR()</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "164";
+window.RepoFusionVersions.index = "167";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -457,24 +455,46 @@ function startAR(){
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
 
-  // --- LOAD 8TH WALL SCRIPTS IN SERIES (ALWAYS FRESH - every attempt identical to first) ---
-  const runXR = () => {
-    console.log("[AR] XR8 ready");
-    if (window.XR8) {
-      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-      console.log("[AR] XR8.run() called - waiting for video...");
-      setTimeout(() => {
-        console.log("[AR] Creating A-Frame scene...");
-        createARScene();
-      }, 800);
+  // --- FIRST: LOAD A-FRAME AND RGBE (if not already loaded) ---
+  const ensureAFrame = () => {
+    if (window.AFRAME) {
+      console.log("[AR] A-Frame already loaded");
+      loadXR8Scripts();
+    } else {
+      const aframeScript = document.createElement("script");
+      aframeScript.src = "https://aframe.io/releases/1.4.2/aframe.min.js";
+      aframeScript.onload = () => {
+        console.log("[AR] A-Frame loaded");
+        const rgbeScript = document.createElement("script");
+        rgbeScript.src = "https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js";
+        rgbeScript.onload = () => {
+          console.log("[AR] RGBELoader loaded");
+          loadXR8Scripts();
+        };
+        document.body.appendChild(rgbeScript);
+      };
+      document.body.appendChild(aframeScript);
     }
   };
 
-  // ALWAYS load scripts in series (no reuse check) - every attempt must be identical to first
-  const t = Date.now();
-  
-  function loadNextScript(index) {
-    const scripts = [
+  // --- THEN: LOAD 8TH WALL SCRIPTS IN SERIES ---
+  const loadXR8Scripts = () => {
+    const runXR = () => {
+      console.log("[AR] XR8 ready");
+      if (window.XR8) {
+        window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+        console.log("[AR] XR8.run() called - waiting for video...");
+        setTimeout(() => {
+          console.log("[AR] Creating A-Frame scene...");
+          createARScene();
+        }, 800);
+      }
+    };
+
+    const t = Date.now();
+    
+    function loadNextScript(index) {
+      const scripts = [
       { id: "runtimeScript-" + t, src: "./external/runtime/runtime.js?t=" + t },
       { id: "xrScript-" + t, src: "./external/xr/xr.js?t=" + t, async: false },
       { id: "bundleScript-" + t, src: "bundle.js?t=" + t },
@@ -505,9 +525,13 @@ function startAR(){
     };
     
     document.body.appendChild(script);
-  }
-  
-  loadNextScript(0);
+    }
+    
+    loadNextScript(0);
+  };
+
+  // Start the chain: ensure A-Frame, then load XR8
+  ensureAFrame();
 }
 
 function stopAR(){
@@ -611,7 +635,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v164\n";
+  let versionText = "VERSION v167\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
