@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 160.4 - Back to monolithic (v3.1 base without xrweb) -->
+<!-- version 160.5 - Removed MindAR script (was interfering with XR8) -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
@@ -161,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 160.4</div>
+  <div id="prueba">Prueba Fusion 160.5</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -178,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v160.4
-Monolithic | No xrweb</div>
+<div id="versionPanel">VERSION v160.5
+No MindAR interference</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "160.4";
+window.RepoFusionVersions.index = "160.5";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -569,7 +568,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v160.4\n";
+  let versionText = "VERSION v160.5\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
