@@ -1,10 +1,9 @@
-// Menu module v150.5
-// Generated as part of the AR refactor.
-// version 150.5
+// Menu module v151.0
+// version 151.0
 
 window.RepoFusion = window.RepoFusion || {};
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.menu = "150.5";
+window.RepoFusionVersions.menu = "151.0";
 window.RepoFusion.pose = {
   camera: null,
   marker: null,
@@ -226,7 +225,7 @@ function startAR(){
       isARActive = false;
       restoreMenuNodes();
       createMV();
-      history.replaceState({mode:"menu", current}, "");
+      history.replaceState({mode:"menu", current}, "", window.location.pathname);
     });
   }).catch((err) => {
     console.warn("No se pudo cargar el módulo AR:", err);
@@ -265,11 +264,10 @@ function stopAR(){
   document.body.style.background = "#1f1a17";
   restoreMenuNodes();
   createMV();
-  history.replaceState({mode:"menu", current}, "");
+  history.replaceState({mode:"menu", current}, "", window.location.pathname);
 }
 
-window.addEventListener("popstate", (event) => {
-  console.log("menu.js popstate", event.state, history.state);
+window.addEventListener("popstate", () => {
   stopAR();
 });
 
@@ -280,7 +278,7 @@ window.toggleEnv = function() {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "");
+  history.replaceState({mode:"menu", current}, "", window.location.pathname);
   document.getElementById("envToggle").style.display = "none";
   createVersionPanel();
   createMV();

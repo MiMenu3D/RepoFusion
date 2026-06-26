@@ -1,14 +1,16 @@
-// AR module v150.5
-// Generated as part of the AR refactor.
-// version 150.5
+// AR module v151.0
+// Arquitectura dual-canvas:
+//   - xr8Canvas (z-index 0): XR8 renderiza solo el feed de cámara, provee tracking vía bridge
+//   - a-scene   (z-index 1): A-Frame artesanal con alpha:true, HDR y light estimation
+// Sin xrweb → A-Frame es completamente nuestro.
+// version 151.0
 
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.ar = "150.5";
+window.RepoFusionVersions.ar = "151.0";
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
 
-let envEnabled = true;
 let originalEnv = null;
 let cameraEnv = null;
 let envMode = "hdr";
@@ -41,10 +43,10 @@ function loadXR8Assets() {
 function waitForXR8() {
   if (!xrLoadPromise) {
     xrLoadPromise = new Promise((resolve) => {
-      const onXRLoaded = () => resolve(window.XR8);
       if (window.XR8) {
         resolve(window.XR8);
       } else {
+        const onXRLoaded = () => resolve(window.XR8);
         window.addEventListener("xrloaded", onXRLoaded, { once: true });
         window.addEventListener("XRloaded", onXRLoaded, { once: true });
       }
@@ -56,35 +58,43 @@ function waitForXR8() {
 function createARScene(modelSrc) {
   const container = document.getElementById("arContainer");
   container.style.background = "transparent";
+
+  // xr8Canvas: 8th Wall renderiza aquí el feed de cámara (z-index 0, debajo de todo)
+  // a-scene: A-Frame artesanal con fondo transparente encima (z-index 1)
   container.innerHTML = `
+    <canvas id="xr8Canvas" style="position:fixed; inset:0; width:100%; height:100%; z-index:0;"></canvas>
     <a-scene
-      xrweb
-      xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       embedded
       vr-mode-ui="enabled:false"
-      device-orientation-permission-ui="enabled:false">
+      device-orientation-permission-ui="enabled:false"
+      style="position:fixed; inset:0; z-index:1;">
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-      <a-entity id="trackingRoot">
+      <a-entity id="trackingRoot" visible="false">
         <a-gltf-model id="aframeModel" src="${modelSrc}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
       </a-entity>
     </a-scene>`;
 
   const sceneEl = container.querySelector("a-scene");
+
   sceneEl.addEventListener("loaded", () => {
-    if (arIntervalId) {
-      clearInterval(arIntervalId);
-    }
+
+    // --- Tracking: leer del bridge cada 30ms ---
     arIntervalId = setInterval(() => {
       const root = document.getElementById("trackingRoot");
-      if (!root || !window.RepoFusion || !window.RepoFusion.pose.marker) return;
+      if (!root || !window.RepoFusion) return;
       const marker = window.RepoFusion.pose.marker;
-      if (!marker.position || !marker.rotation) return;
-      root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-      root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      if (marker && marker.position && marker.rotation) {
+        root.setAttribute("visible", "true");
+        root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
+        root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      } else {
+        root.setAttribute("visible", "false");
+      }
     }, 30);
 
+    // --- Light estimation con video de cámara ---
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
     pmremGenerator.compileEquirectangularShader();
 
@@ -124,18 +134,27 @@ function createARScene(modelSrc) {
       }
     }, 500);
 
+    // --- HDR environment ---
     new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
     });
 
-    if (sceneEl.hasLoaded) {
-      sceneEl.emit("runreality");
-    } else {
-      sceneEl.addEventListener("loaded", () => sceneEl.emit("runreality"), { once: true });
-    }
-  }, {once:true});
+    // --- Arrancar XR8 en su propio canvas para tracking ---
+    // bridge.js ya añadió su pipeline module en xrloaded.
+    // Añadimos GlTextureRenderer (feed de cámara en xr8Canvas) + XrController (image tracking).
+    waitForXR8().then(() => {
+      const xr8Canvas = document.getElementById("xr8Canvas");
+      XR8.addCameraPipelineModule(XR8.GlTextureRenderer.pipelineModule());
+      XR8.addCameraPipelineModule(XR8.XrController.pipelineModule());
+      XR8.run({
+        canvas: xr8Canvas,
+        cameraConfig: { direction: "back" }
+      });
+    });
+
+  }, { once: true });
 }
 
 function destroyARScene() {
@@ -152,9 +171,8 @@ function destroyARScene() {
 
 function startAR(modelSrc) {
   loadXR8Assets();
-  return waitForXR8().then(() => {
-    createARScene(modelSrc);
-  });
+  createARScene(modelSrc);
+  return Promise.resolve();
 }
 
 function stopAR() {
@@ -164,6 +182,7 @@ function stopAR() {
     if (window.XR8.clearCameraPipelineModules) {
       try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
     }
+    xrLoadPromise = null;
     const mediaNodes = document.querySelectorAll("video, canvas");
     mediaNodes.forEach((node) => {
       if (node.tagName === "VIDEO") {
