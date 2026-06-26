@@ -1,9 +1,9 @@
-// AR module v150.4
+// AR module v150.5
 // Generated as part of the AR refactor.
-// version 150.4
+// version 150.5
 
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.ar = "150.4";
+window.RepoFusionVersions.ar = "150.5";
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -58,8 +58,6 @@ function createARScene(modelSrc) {
   container.style.background = "transparent";
   container.innerHTML = `
     <a-scene
-      xrweb
-      xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       embedded
