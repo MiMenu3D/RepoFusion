@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 167.0 - Back to v164 logic + destroy arContainer to prevent residue -->
+<!-- version 164x.0 - Reuse XR8, display:none menus (not innerHTML), scripts in series -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 167.0</div>
+  <div id="prueba">Prueba Fusion 164.0</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v167.0
-Back to v164 + destroy arContainer</div>
+<div id="versionPanel">VERSION v164.0
+v163 scripts + v161 UI strategy</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "167.0";
+window.RepoFusionVersions.index = "164.0";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -327,6 +327,13 @@ function next(){
 // =====================================================
 
 function createARScene(){
+  // ENSURE CLEAN STATE - kill any residual from previous attempt
+  video = null;
+  pmremGenerator = null;
+  cameraRT = null;
+  envTexture = null;
+  envCanvas = null;
+  
   const container = document.getElementById("arContainer");
   container.innerHTML = `
     <a-scene
@@ -400,7 +407,6 @@ function createARScene(){
         }, 50);
 
         clearInterval(waitForVideo);
-        console.log("[AR] Video loop started");
       }
     }, 100);
 
@@ -438,15 +444,25 @@ function startAR(){
   document.getElementById("mvContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "none";
   
-  // --- CLEAN ANY PREVIOUS AR RESIDUE ---
-  document.getElementById("arContainer").innerHTML = "";
-  
   // --- SETUP AR UI ---
   document.getElementById("arContainer").style.display = "block";
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
 
-  // --- LOAD 8TH WALL SCRIPTS IN SERIES ---
+  // --- LOAD 8TH WALL SCRIPTS IN SERIES (ALWAYS FRESH - every attempt identical to first) ---
+  const runXR = () => {
+    console.log("[AR] XR8 ready");
+    if (window.XR8) {
+      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+      console.log("[AR] XR8.run() called - waiting for video...");
+      setTimeout(() => {
+        console.log("[AR] Creating A-Frame scene...");
+        createARScene();
+      }, 800);
+    }
+  };
+
+  // ALWAYS load scripts in series (no reuse check) - every attempt must be identical to first
   const t = Date.now();
   
   function loadNextScript(index) {
@@ -459,23 +475,7 @@ function startAR(){
     
     if (index >= scripts.length) {
       console.log("[AR] All scripts loaded, waiting for XR8...");
-      const runXR = () => {
-        console.log("[AR] XR8 ready");
-        if (window.XR8) {
-          window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-          console.log("[AR] XR8.run() called");
-          setTimeout(() => {
-            console.log("[AR] Creating A-Frame scene...");
-            createARScene();
-          }, 800);
-        }
-      };
-      
-      if (window.XR8) {
-        runXR();
-      } else {
-        window.addEventListener("xrloaded", runXR, { once: true });
-      }
+      window.addEventListener("xrloaded", runXR, { once: true });
       return;
     }
     
@@ -490,7 +490,7 @@ function startAR(){
     
     script.onload = () => {
       console.log("[AR] Script loaded: " + scriptInfo.id);
-      setTimeout(() => loadNextScript(index + 1), 100);
+      setTimeout(() => loadNextScript(index + 1), 100); // Small delay between scripts
     };
     script.onerror = () => {
       console.error("[AR] Failed to load: " + scriptInfo.id);
@@ -508,32 +508,27 @@ function stopAR(){
   // Clean XR8 tracking completely
   if (window.XR8) {
     try {
-      console.log("[AR] Pausing XR8...");
-      window.XR8.pause();
-    } catch (err) {
-      console.warn("[AR] XR8.pause failed:", err);
-    }
-    try {
       console.log("[AR] Stopping XR8...");
-      window.XR8.stop();
+      if (window.XR8.pause) window.XR8.pause();
+      if (window.XR8.stop) window.XR8.stop();
+      if (window.XR8.clearCameraPipelineModules) window.XR8.clearCameraPipelineModules();
     } catch (err) {
-      console.warn("[AR] XR8.stop failed:", err);
+      console.warn("[AR] XR8 cleanup error:", err);
     }
-    if (window.XR8.clearCameraPipelineModules) {
-      try {
-        console.log("[AR] Clearing camera pipeline...");
-        window.XR8.clearCameraPipelineModules();
-      } catch (err) {
-        console.warn("[AR] XR8.clearCameraPipelineModules failed:", err);
-      }
-    }
-    const videoEl = document.querySelector("video");
-    if (videoEl) {
-      videoEl.pause();
+    
+    // KILL XR8 completely for next attempt to be fresh
+    window.XR8 = null;
+  }
+
+  // Clean video element and stream
+  const videoEl = document.querySelector("video");
+  if (videoEl) {
+    if (videoEl.srcObject) {
+      videoEl.srcObject.getTracks().forEach(t => t.stop());
       videoEl.srcObject = null;
-      console.log("[AR] Video element cleaned");
     }
-    // Don't reset XR8 to null - keep for reuse in next attempt
+    videoEl.pause();
+    console.log("[AR] Video cleaned");
   }
 
   console.log("[AR] Destroying AR scene...");
@@ -548,8 +543,24 @@ function stopAR(){
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
   
+  // REMOVE ALL DYNAMICALLY LOADED SCRIPTS (so next attempt loads fresh)
+  document.querySelectorAll("script[id*='runtimeScript-'], script[id*='xrScript-'], script[id*='bundleScript-'], script[id*='bridgeScript-']").forEach(s => s.remove());
+  
+  // RESET ALL AR STATE VARIABLES - NO RESIDUE FOR NEXT ATTEMPT
+  video = null;
+  pmremGenerator = null;
+  cameraRT = null;
+  envTexture = null;
+  envCanvas = null;
+  originalEnv = null;
+  cameraEnv = null;
+  if (envInterval) clearInterval(envInterval);
+  envInterval = null;
+  if (arIntervalId) clearInterval(arIntervalId);
+  arIntervalId = null;
+  envMode = "hdr"; // Reset to default mode
+  
   // Show menu - RESTORE (don't recreate)
-  document.getElementById("arContainer").innerHTML = "";
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("mvContainer").style.display = "block";
   document.getElementById("startScreen").style.display = "flex";
@@ -592,7 +603,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v167.0\n";
+  let versionText = "VERSION v164.0\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
@@ -627,4 +638,3 @@ window.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
-
