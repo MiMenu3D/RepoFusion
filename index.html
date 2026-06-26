@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 160.1 - Back to monolithic (v3.1 base without xrweb) -->
+<!-- version 160.3 - Back to monolithic (v3.1 base without xrweb) -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -161,7 +161,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 160.1</div>
+  <div id="prueba">Prueba Fusion 160.3</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -178,7 +178,7 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v160.1
+<div id="versionPanel">VERSION v160.3
 Monolithic | No xrweb</div>
 
 <script>
@@ -186,7 +186,7 @@ Monolithic | No xrweb</div>
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "160.1";
+window.RepoFusionVersions.index = "160.3";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -357,43 +357,49 @@ function createARScene(){
     // 2. PMREM setup for HDR
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
     pmremGenerator.compileEquirectangularShader();
+    console.log("[AR] PMREM initialized");
 
-    setTimeout(() => {
-      const waitForVideo = setInterval(() => {
-        const candidate = document.querySelector("video");
-        if (candidate && candidate.readyState >= 2) {
-          clearInterval(waitForVideo);
-          video = candidate;
-          cameraEnv = new THREE.VideoTexture(video);
-          cameraEnv.colorSpace = THREE.SRGBColorSpace;
+    // Wait for video element (8th Wall creates it dynamically)
+    let videoWaitCount = 0;
+    const waitForVideo = setInterval(() => {
+      videoWaitCount++;
+      const candidate = document.querySelector("video");
+      if (candidate && candidate.readyState >= 2) {
+        clearInterval(waitForVideo);
+        console.log("[AR] Video element found after " + videoWaitCount + " checks");
+        video = candidate;
+        cameraEnv = new THREE.VideoTexture(video);
+        cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
-          envCanvas = document.createElement("canvas");
-          envCanvas.width = 64;
-          envCanvas.height = 64;
-          envTexture = new THREE.CanvasTexture(envCanvas);
-          envTexture.mapping = THREE.EquirectangularReflectionMapping;
-          const ctx = envCanvas.getContext("2d");
-          let smoothed = 120;
+        envCanvas = document.createElement("canvas");
+        envCanvas.width = 64;
+        envCanvas.height = 64;
+        envTexture = new THREE.CanvasTexture(envCanvas);
+        envTexture.mapping = THREE.EquirectangularReflectionMapping;
+        const ctx = envCanvas.getContext("2d");
+        let smoothed = 120;
 
-          envInterval = setInterval(() => {
-            if (!video || video.readyState < 2) return;
-            ctx.drawImage(video, 0, 0, 64, 64);
-            envTexture.needsUpdate = true;
-            if (pmremGenerator) {
-              if (cameraRT) cameraRT.dispose();
-              cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-              if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
-            }
-            const pixels = ctx.getImageData(0, 0, 64, 64).data;
-            let total = 0;
-            for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-            const brightness = total / (pixels.length / 4);
-            smoothed = smoothed + (brightness - smoothed) * 0.08;
-            const exposure = 0.6 + (smoothed / 255) * 0.9;
-            if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-          }, 50);
-        }
-      }, 500);
+        envInterval = setInterval(() => {
+          if (!video || video.readyState < 2) return;
+          ctx.drawImage(video, 0, 0, 64, 64);
+          envTexture.needsUpdate = true;
+          if (pmremGenerator) {
+            if (cameraRT) cameraRT.dispose();
+            cameraRT = pmremGenerator.fromEquirectangular(envTexture);
+            if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
+          }
+          const pixels = ctx.getImageData(0, 0, 64, 64).data;
+          let total = 0;
+          for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+          const brightness = total / (pixels.length / 4);
+          smoothed = smoothed + (brightness - smoothed) * 0.08;
+          const exposure = 0.6 + (smoothed / 255) * 0.9;
+          if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
+        }, 50);
+      } else if (videoWaitCount > 100) {
+        console.warn("[AR] Video element not found after 50 seconds, stopping wait");
+        clearInterval(waitForVideo);
+      }
     }, 200);
 
     // 3. Load HDR fallback
@@ -422,57 +428,128 @@ function destroyARScene(){
 // =====================================================
 
 function startAR(){
-  loadXR8Assets();
+  console.log("[AR] startAR called");
+  
+  // --- LOAD 8TH WALL SCRIPTS DIRECTLY (v3.1 working method) ---
+  const runtime = document.createElement("script");
+  runtime.src = "./external/runtime/runtime.js";
+  document.body.appendChild(runtime);
+  console.log("[AR] Loading runtime.js");
+
+  const xr = document.createElement("script");
+  xr.src = "./external/xr/xr.js";
+  xr.setAttribute("async", "true");
+  xr.setAttribute("data-preload-chunks", "face, slam");
+  document.body.appendChild(xr);
+  console.log("[AR] Loading xr.js");
+  
+  const bundle = document.createElement("script");
+  bundle.src = "bundle.js";
+  document.body.appendChild(bundle);
+  console.log("[AR] Loading bundle.js");
+
+  const bridge = document.createElement("script");
+  bridge.src = "bridge.js?t=" + Date.now();
+  document.body.appendChild(bridge);
+  console.log("[AR] Loading bridge.js");
+
+  // --- START XR8 WHEN READY ---
+  const runXR = () => {
+    console.log("[AR] XR8 ready, calling XR8.run()");
+    if (window.XR8) {
+      try {
+        window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+        console.log("[AR] XR8.run() executed");
+      } catch (err) {
+        console.error("[AR] XR8.run() failed:", err);
+      }
+    } else {
+      console.error("[AR] window.XR8 not available");
+    }
+  };
+
+  // Check if XR8 is already loaded
+  if (window.XR8) {
+    console.log("[AR] XR8 already available, running immediately");
+    runXR();
+  } else {
+    console.log("[AR] Waiting for xrloaded event");
+    window.addEventListener("xrloaded", runXR, { once: true });
+  }
+
+  // --- SETUP AR UI ---
   history.pushState({mode:"ar", current}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
-
-  waitForXR8().then(() => {
-    createARScene();
-    // Start 8th Wall camera feed
-    if (window.XR8 && typeof window.XR8.run === "function") {
-      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-    }
-  }).catch((err) => {
-    console.warn("Failed to start AR:", err);
-  });
+  
+  console.log("[AR] Creating AR scene");
+  createARScene();
 }
 
 function stopAR(){
+  console.log("[AR] stopAR called");
+  
+  // Clean XR8 tracking
   if (window.XR8) {
     try {
+      console.log("[AR] Pausing XR8...");
       window.XR8.pause();
     } catch (err) {
-      console.warn("XR8.pause failed:", err);
+      console.warn("[AR] XR8.pause failed:", err);
     }
     try {
+      console.log("[AR] Stopping XR8...");
       window.XR8.stop();
     } catch (err) {
-      console.warn("XR8.stop failed:", err);
+      console.warn("[AR] XR8.stop failed:", err);
     }
     if (window.XR8.clearCameraPipelineModules) {
       try {
+        console.log("[AR] Clearing camera pipeline...");
         window.XR8.clearCameraPipelineModules();
       } catch (err) {
-        console.warn("XR8.clearCameraPipelineModules failed:", err);
+        console.warn("[AR] XR8.clearCameraPipelineModules failed:", err);
       }
     }
     const videoEl = document.querySelector("video");
-    if (videoEl) videoEl.srcObject = null;
+    if (videoEl) {
+      videoEl.pause();
+      videoEl.srcObject = null;
+      console.log("[AR] Video element cleaned");
+    }
   }
 
+  console.log("[AR] Destroying AR scene...");
   destroyARScene();
+  
+  // Hide AR UI
   document.getElementById("lightDebug").style.display = "none";
   document.getElementById("envToggle").style.display = "none";
-  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
+  
+  // Clean scanning UI
+  document.querySelectorAll(".mindar-ui-scanning").forEach(el => {
+    el.remove();
+    console.log("[AR] Removed MindAR scanning UI");
+  });
+  
+  // Clean bridge debug panel
   const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) bridgePanel.remove();
+  if (bridgePanel) {
+    bridgePanel.remove();
+    console.log("[AR] Removed bridge panel");
+  }
+  
+  // Show menu
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
+  
+  console.log("[AR] Recreating model viewer...");
   createMV();
+  
+  console.log("[AR] stopAR complete");
 }
 
 window.addEventListener("popstate", () => stopAR());
@@ -507,7 +584,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v160.1\n";
+  let versionText = "VERSION v160.3\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
