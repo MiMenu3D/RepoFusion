@@ -1,10 +1,10 @@
-// Menu module v150.4
+// Menu module v150.5
 // Generated as part of the AR refactor.
-// version 150.4
+// version 150.5
 
 window.RepoFusion = window.RepoFusion || {};
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.menu = "150.4";
+window.RepoFusionVersions.menu = "150.5";
 window.RepoFusion.pose = {
   camera: null,
   marker: null,
@@ -124,12 +124,8 @@ function createVersionPanel() {
   updateVersionList(list);
 
   button.addEventListener("click", () => {
-    if (list.style.display === "none") {
-      updateVersionList(list);
-      list.style.display = "block";
-    } else {
-      list.style.display = "none";
-    }
+    updateVersionList(list);
+    list.style.display = list.style.display === "none" ? "block" : "none";
   });
 
   panel.appendChild(button);
@@ -158,6 +154,10 @@ function restoreMenuNodes() {
   }
   if (menuNodes.mvContainer && !document.getElementById("mvContainer")) {
     document.body.insertBefore(menuNodes.mvContainer, arContainer);
+  }
+  const versionList = document.getElementById("versionList");
+  if (versionList) {
+    updateVersionList(versionList);
   }
 }
 
@@ -268,7 +268,8 @@ function stopAR(){
   history.replaceState({mode:"menu", current}, "");
 }
 
-window.addEventListener("popstate", () => {
+window.addEventListener("popstate", (event) => {
+  console.log("menu.js popstate", event.state, history.state);
   stopAR();
 });
 
