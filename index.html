@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 161.0 - XR8 first, then A-Frame (800ms delay) -->
+<!-- version 161.1 - Model always visible, SLAM-like: stays at last known position if tracking lost -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 161.0</div>
+  <div id="prueba">Prueba Fusion 161.1</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v161.0
-XR8 first, A-Frame 800ms after</div>
+<div id="versionPanel">VERSION v161.1
+Model always visible (SLAM-like)</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "161.0";
+window.RepoFusionVersions.index = "161.1";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -342,15 +342,21 @@ function createARScene(){
 
   const sceneEl = container.querySelector("a-scene");
   sceneEl.addEventListener("loaded", () => {
-    // 1. Tracking update loop
+    // 1. Tracking update loop - ALWAYS render, update when data available
     if (arIntervalId) clearInterval(arIntervalId);
     arIntervalId = setInterval(() => {
       const root = document.getElementById("trackingRoot");
-      if (!root || !window.RepoFusion || !window.RepoFusion.pose.marker) return;
-      const marker = window.RepoFusion.pose.marker;
-      if (!marker.position || !marker.rotation) return;
-      root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-      root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      if (!root) return;
+      
+      // Update position if marker data exists, otherwise keep last known position
+      if (window.RepoFusion && window.RepoFusion.pose.marker) {
+        const marker = window.RepoFusion.pose.marker;
+        if (marker.position && marker.rotation) {
+          root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
+          root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+        }
+      }
+      // If no marker, model stays visible at last position (simulates SLAM)
     }, 30);
 
     // 2. PMREM setup for HDR
@@ -358,14 +364,11 @@ function createARScene(){
     pmremGenerator.compileEquirectangularShader();
     console.log("[AR] PMREM initialized");
 
-    // Wait for video element (8th Wall creates it dynamically)
-    let videoWaitCount = 0;
+    // Try to find video element (8th Wall creates it), but don't block rendering
     const waitForVideo = setInterval(() => {
-      videoWaitCount++;
       const candidate = document.querySelector("video");
-      if (candidate && candidate.readyState >= 2) {
-        clearInterval(waitForVideo);
-        console.log("[AR] Video element found after " + videoWaitCount + " checks");
+      if (candidate && candidate.readyState >= 2 && !video) {
+        console.log("[AR] Video element found");
         video = candidate;
         cameraEnv = new THREE.VideoTexture(video);
         cameraEnv.colorSpace = THREE.SRGBColorSpace;
@@ -395,11 +398,10 @@ function createARScene(){
           const exposure = 0.6 + (smoothed / 255) * 0.9;
           if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
         }, 50);
-      } else if (videoWaitCount > 100) {
-        console.warn("[AR] Video element not found after 50 seconds, stopping wait");
+
         clearInterval(waitForVideo);
       }
-    }, 200);
+    }, 100);
 
     // 3. Load HDR fallback
     new THREE.RGBELoader().load("HDR/cinema_lobby_B-N.hdr", (hdr) => {
@@ -572,7 +574,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v161.0\n";
+  let versionText = "VERSION v161.1\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
