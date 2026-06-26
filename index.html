@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 164.0 - Reuse XR8, display:none menus (not innerHTML), scripts in series -->
+<!-- version 166.0 - Back to destroying UI completely + scripts in series = v161 fixed -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 164.0</div>
+  <div id="prueba">Prueba Fusion 165.0</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v164.0
-v163 scripts + v161 UI strategy</div>
+<div id="versionPanel">VERSION v165.0
+Lower z-index + 2s delay 1st attempt</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "164.0";
+window.RepoFusionVersions.index = "166.0";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -400,6 +400,7 @@ function createARScene(){
         }, 50);
 
         clearInterval(waitForVideo);
+        console.log("[AR] Video loop started");
       }
     }, 100);
 
@@ -431,38 +432,18 @@ function destroyARScene(){
 function startAR(){
   console.log("[AR] startAR called");
   
-  // --- HIDE MENU UI (don't destroy innerHTML) ---
+  // --- COMPLETELY DESTROY MENU UI ---
   history.pushState({mode:"ar", current}, "");
   destroyMV();
-  document.getElementById("mvContainer").style.display = "none";
-  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("mvContainer").innerHTML = "";
+  document.getElementById("startScreen").innerHTML = "";
   
   // --- SETUP AR UI ---
   document.getElementById("arContainer").style.display = "block";
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
 
-  // --- LOAD 8TH WALL SCRIPTS IN SERIES (only if not already loaded) ---
-  const runXR = () => {
-    console.log("[AR] XR8 ready");
-    if (window.XR8) {
-      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-      console.log("[AR] XR8.run() called - waiting for video...");
-      setTimeout(() => {
-        console.log("[AR] Creating A-Frame scene...");
-        createARScene();
-      }, 800);
-    }
-  };
-
-  // If XR8 already loaded, just run it
-  if (window.XR8) {
-    console.log("[AR] XR8 already loaded, reusing...");
-    runXR();
-    return;
-  }
-
-  // First attempt - load scripts in series
+  // --- LOAD 8TH WALL SCRIPTS IN SERIES (always fresh) ---
   const t = Date.now();
   
   function loadNextScript(index) {
@@ -474,8 +455,24 @@ function startAR(){
     ];
     
     if (index >= scripts.length) {
-      console.log("[AR] All scripts loaded, waiting for XR8...");
-      window.addEventListener("xrloaded", runXR, { once: true });
+      console.log("[AR] All scripts loaded, initializing XR8...");
+      const runXR = () => {
+        console.log("[AR] XR8 ready");
+        if (window.XR8) {
+          window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+          console.log("[AR] XR8.run() called");
+          setTimeout(() => {
+            console.log("[AR] Creating A-Frame scene...");
+            createARScene();
+          }, 800);
+        }
+      };
+      
+      if (window.XR8) {
+        runXR();
+      } else {
+        window.addEventListener("xrloaded", runXR, { once: true });
+      }
       return;
     }
     
@@ -490,7 +487,7 @@ function startAR(){
     
     script.onload = () => {
       console.log("[AR] Script loaded: " + scriptInfo.id);
-      setTimeout(() => loadNextScript(index + 1), 100); // Small delay between scripts
+      setTimeout(() => loadNextScript(index + 1), 100);
     };
     script.onerror = () => {
       console.error("[AR] Failed to load: " + scriptInfo.id);
@@ -516,7 +513,8 @@ function stopAR(){
       console.warn("[AR] XR8 cleanup error:", err);
     }
     
-    // Don't reset window.XR8 to null - keep it for reuse in next attempt
+    // Reset XR8 for fresh load next time
+    window.XR8 = null;
   }
 
   // Clean video element and stream
@@ -542,12 +540,22 @@ function stopAR(){
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
   
-  // Don't remove scripts - keep them in memory for reuse
+  // Clean all scripts that were dynamically added
+  document.querySelectorAll("script[id*='runtimeScript-'], script[id*='xrScript-'], script[id*='bundleScript-'], script[id*='bridgeScript-']").forEach(s => s.remove());
   
-  // Show menu - RESTORE (don't recreate)
+  // Show menu - RECREATE COMPLETELY
   document.getElementById("arContainer").style.display = "none";
-  document.getElementById("mvContainer").style.display = "block";
-  document.getElementById("startScreen").style.display = "flex";
+  
+  // Recreate menu HTML from scratch
+  document.getElementById("mvContainer").innerHTML = "";
+  document.getElementById("startScreen").innerHTML = `
+    <div id="prueba">Prueba Fusion 166.0</div>
+    <div id="label">Plato ${current + 1}</div>
+    <div class="arrowContainer">
+      <button class="arrow" onclick="prev()">&#8592;</button>
+      <button class="arrow" onclick="next()">&#8594;</button>
+    </div>
+    <button class="button" onclick="startAR()">Ver en tu mesa</button>`;
   
   console.log("[AR] Recreating model viewer...");
   createMV();
@@ -587,7 +595,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v164.0\n";
+  let versionText = "VERSION v166.0\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
