@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 165.1 - RADICAL: A-Frame renders everything, 8th Wall video as background texture (artisanal, no xrweb) -->
+<!-- version 164xx - PURO: A-Frame + 8th Wall tracking, video only for PMREM -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 165.1</div>
+  <div id="prueba">Prueba Fusion 164xx</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v165.1
-RADICAL: A-Frame renders all, 8th Wall video as BG texture</div>
+<div id="versionPanel">VERSION v164
+A-Frame + 8th Wall tracking, video only for PMREM</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "165.1";
+window.RepoFusionVersions.index = "164";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -337,15 +337,11 @@ function createARScene(){
   const container = document.getElementById("arContainer");
   container.innerHTML = `
     <a-scene
-      renderer="alpha: false; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
+      renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
       device-orientation-permission-ui="enabled:false">
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-      
-      <!-- Fullscreen video background plane (far behind camera) -->
-      <a-plane id="videoBg" geometry="width: 100; height: 100" position="0 0 -99" rotation="0 0 0"></a-plane>
-      
       <a-entity id="trackingRoot">
         <a-gltf-model id="aframeModel" src="${models[current]}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
       </a-entity>
@@ -353,8 +349,6 @@ function createARScene(){
 
   const sceneEl = container.querySelector("a-scene");
   sceneEl.addEventListener("loaded", () => {
-    console.log("[AR] A-Frame scene loaded (artisanal, no xrweb)");
-    
     // 1. Tracking update loop - ALWAYS render, update when data available
     if (arIntervalId) clearInterval(arIntervalId);
     arIntervalId = setInterval(() => {
@@ -369,40 +363,23 @@ function createARScene(){
           root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
         }
       }
+      // If no marker, model stays visible at last position (simulates SLAM)
     }, 30);
 
-    // 2. PMREM setup
+    // 2. PMREM setup for HDR
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
     pmremGenerator.compileEquirectangularShader();
     console.log("[AR] PMREM initialized");
 
-    // 3. Wait for 8th Wall video element and INJECT INTO A-FRAME as background texture
+    // Try to find video element (8th Wall creates it), but don't block rendering
     const waitForVideo = setInterval(() => {
       const candidate = document.querySelector("video");
       if (candidate && candidate.readyState >= 2 && !video) {
-        console.log("[AR] 8th Wall video found, injecting into A-Frame...");
+        console.log("[AR] Video element found");
         video = candidate;
-        
-        // Hide 8th Wall's video element (A-Frame will handle rendering)
-        video.style.display = "none";
-        
-        // Create THREE.js VideoTexture from 8th Wall's stream
         cameraEnv = new THREE.VideoTexture(video);
         cameraEnv.colorSpace = THREE.SRGBColorSpace;
-        
-        // Apply video texture to background plane using THREE.js material
-        const videoBg = document.getElementById("videoBg");
-        if (videoBg && videoBg.object3D) {
-          const mesh = videoBg.object3D.children[0];
-          if (mesh && mesh.material) {
-            mesh.material.map = cameraEnv;
-            mesh.material.map.flipY = false;
-            mesh.material.needsUpdate = true;
-            console.log("[AR] Video texture applied to background plane");
-          }
-        }
 
-        // Setup canvas for brightness sampling (light estimation)
         envCanvas = document.createElement("canvas");
         envCanvas.width = 64;
         envCanvas.height = 64;
@@ -413,18 +390,13 @@ function createARScene(){
 
         envInterval = setInterval(() => {
           if (!video || video.readyState < 2) return;
-          
-          // Draw video frame to small canvas for PMREM
           ctx.drawImage(video, 0, 0, 64, 64);
           envTexture.needsUpdate = true;
-          
           if (pmremGenerator) {
             if (cameraRT) cameraRT.dispose();
             cameraRT = pmremGenerator.fromEquirectangular(envTexture);
             if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
           }
-          
-          // Light estimation (brightness sampling)
           const pixels = ctx.getImageData(0, 0, 64, 64).data;
           let total = 0;
           for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
@@ -438,11 +410,14 @@ function createARScene(){
       }
     }, 100);
 
-    // 4. Load HDR fallback
+    // 3. Load HDR fallback
     new THREE.RGBELoader().load("HDR/cinema_lobby_B-N.hdr", (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
+    });
+  }, {once:true});
+}
       console.log("[AR] HDR fallback loaded");
     });
   }, {once:true});
@@ -636,7 +611,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v165.1\n";
+  let versionText = "VERSION v164\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
