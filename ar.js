@@ -1,9 +1,6 @@
-// AR module v150.5
+// AR module v1.2
 // Generated as part of the AR refactor.
-// version 150.5
-
-window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.ar = "150.5";
+// version 1.2
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -58,6 +55,8 @@ function createARScene(modelSrc) {
   container.style.background = "transparent";
   container.innerHTML = `
     <a-scene
+      xrweb
+      xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       embedded
@@ -162,15 +161,8 @@ function stopAR() {
     if (window.XR8.clearCameraPipelineModules) {
       try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
     }
-    const mediaNodes = document.querySelectorAll("video, canvas");
-    mediaNodes.forEach((node) => {
-      if (node.tagName === "VIDEO") {
-        try { node.srcObject = null; } catch (err) { console.warn("clear video srcObject failed", err); }
-      }
-      if (!node.closest("#mvContainer")) {
-        node.remove();
-      }
-    });
+    const videoEl = document.querySelector("video");
+    if (videoEl) videoEl.srcObject = null;
   }
   destroyARScene();
 }
