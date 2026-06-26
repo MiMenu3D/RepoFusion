@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 161.1 - Model always visible, SLAM-like: stays at last known position if tracking lost -->
+<!-- version 162.0 - Aggressive cleanup: destroy UI, reset XR8, fix event listener for 2nd+ attempts -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -160,7 +160,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 161.1</div>
+  <div id="prueba">Prueba Fusion 162.0</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -177,15 +177,15 @@ a-scene { width:100%; height:100%; }
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v161.1
-Model always visible (SLAM-like)</div>
+<div id="versionPanel">VERSION v162.0
+Aggressive cleanup + XR8 reset</div>
 
 <script>
 // =====================================================
 // VERSION TRACKING
 // =====================================================
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "161.1";
+window.RepoFusionVersions.index = "162.0";
 
 // =====================================================
 // RepoFusion bridge listener
@@ -431,36 +431,46 @@ function destroyARScene(){
 function startAR(){
   console.log("[AR] startAR called");
   
-  // --- SETUP AR UI FIRST ---
+  // --- COMPLETELY DESTROY MENU UI ---
   history.pushState({mode:"ar", current}, "");
   destroyMV();
+  document.getElementById("mvContainer").innerHTML = "";
+  document.getElementById("startScreen").innerHTML = "";
   document.getElementById("startScreen").style.display = "none";
+  document.getElementById("mvContainer").style.display = "none";
+  
+  // --- SETUP AR UI ---
   document.getElementById("arContainer").style.display = "block";
   document.getElementById("envToggle").style.display = "block";
   document.getElementById("lightDebug").style.display = "block";
 
-  // --- LOAD 8TH WALL SCRIPTS ---
+  // --- LOAD 8TH WALL SCRIPTS (fresh each time) ---
+  const t = Date.now();
   const runtime = document.createElement("script");
-  runtime.src = "./external/runtime/runtime.js";
+  runtime.id = "runtimeScript-" + t;
+  runtime.src = "./external/runtime/runtime.js?t=" + t;
   document.body.appendChild(runtime);
 
   const xr = document.createElement("script");
-  xr.src = "./external/xr/xr.js";
+  xr.id = "xrScript-" + t;
+  xr.src = "./external/xr/xr.js?t=" + t;
   xr.setAttribute("async", "true");
   xr.setAttribute("data-preload-chunks", "face, slam");
   document.body.appendChild(xr);
   
   const bundle = document.createElement("script");
-  bundle.src = "bundle.js";
+  bundle.id = "bundleScript-" + t;
+  bundle.src = "bundle.js?t=" + t;
   document.body.appendChild(bundle);
 
   const bridge = document.createElement("script");
-  bridge.src = "bridge.js?t=" + Date.now();
+  bridge.id = "bridgeScript-" + t;
+  bridge.src = "bridge.js?t=" + t;
   document.body.appendChild(bridge);
 
   // --- WAIT FOR XR8 LOADED, START IT FIRST, THEN A-FRAME ---
   const runXR = () => {
-    console.log("[AR] xrloaded event received");
+    console.log("[AR] XR8 ready");
     if (window.XR8) {
       window.XR8.run({ cameraConfig: { direction: 'BACK' } });
       console.log("[AR] XR8.run() called - waiting for video...");
@@ -472,9 +482,12 @@ function startAR(){
     }
   };
 
+  // Check if XR8 is already loaded (second+ attempts)
   if (window.XR8) {
+    console.log("[AR] XR8 already loaded (not first attempt)");
     runXR();
   } else {
+    console.log("[AR] Waiting for xrloaded event (first attempt)");
     window.addEventListener("xrloaded", runXR, { once: true });
   }
 }
@@ -482,34 +495,30 @@ function startAR(){
 function stopAR(){
   console.log("[AR] stopAR called");
   
-  // Clean XR8 tracking
+  // Clean XR8 tracking completely
   if (window.XR8) {
     try {
-      console.log("[AR] Pausing XR8...");
-      window.XR8.pause();
-    } catch (err) {
-      console.warn("[AR] XR8.pause failed:", err);
-    }
-    try {
       console.log("[AR] Stopping XR8...");
-      window.XR8.stop();
+      if (window.XR8.pause) window.XR8.pause();
+      if (window.XR8.stop) window.XR8.stop();
+      if (window.XR8.clearCameraPipelineModules) window.XR8.clearCameraPipelineModules();
     } catch (err) {
-      console.warn("[AR] XR8.stop failed:", err);
+      console.warn("[AR] XR8 cleanup error:", err);
     }
-    if (window.XR8.clearCameraPipelineModules) {
-      try {
-        console.log("[AR] Clearing camera pipeline...");
-        window.XR8.clearCameraPipelineModules();
-      } catch (err) {
-        console.warn("[AR] XR8.clearCameraPipelineModules failed:", err);
-      }
-    }
-    const videoEl = document.querySelector("video");
-    if (videoEl) {
-      videoEl.pause();
+    
+    // Force reset XR8 global for next attempt
+    window.XR8 = null;
+  }
+
+  // Clean video element and stream
+  const videoEl = document.querySelector("video");
+  if (videoEl) {
+    if (videoEl.srcObject) {
+      videoEl.srcObject.getTracks().forEach(t => t.stop());
       videoEl.srcObject = null;
-      console.log("[AR] Video element cleaned");
     }
+    videoEl.pause();
+    console.log("[AR] Video cleaned");
   }
 
   console.log("[AR] Destroying AR scene...");
@@ -519,21 +528,17 @@ function stopAR(){
   document.getElementById("lightDebug").style.display = "none";
   document.getElementById("envToggle").style.display = "none";
   
-  // Clean scanning UI
-  document.querySelectorAll(".mindar-ui-scanning").forEach(el => {
-    el.remove();
-    console.log("[AR] Removed MindAR scanning UI");
-  });
-  
-  // Clean bridge debug panel
+  // Clean all dynamically created elements
+  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) {
-    bridgePanel.remove();
-    console.log("[AR] Removed bridge panel");
-  }
+  if (bridgePanel) bridgePanel.remove();
   
-  // Show menu
+  // Clean all scripts that were dynamically added (with timestamps in IDs)
+  document.querySelectorAll("script[id*='runtimeScript-'], script[id*='xrScript-'], script[id*='bundleScript-'], script[id*='bridgeScript-']").forEach(s => s.remove());
+  
+  // Show menu - RECREATE COMPLETELY
   document.getElementById("arContainer").style.display = "none";
+  document.getElementById("mvContainer").style.display = "block";
   document.getElementById("startScreen").style.display = "flex";
   
   console.log("[AR] Recreating model viewer...");
@@ -574,7 +579,7 @@ function toggleEnv(){
 
 function updateVersionPanel(){
   const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v161.1\n";
+  let versionText = "VERSION v162.0\n";
   versionText += "================\n";
   if (window.RepoFusionVersions) {
     for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
