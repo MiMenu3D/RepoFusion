@@ -79,45 +79,32 @@ function createARScene(modelSrc) {
   container.appendChild(scanOverlay);
 
   const sceneEl = container.querySelector("a-scene");
-
-  const onSceneReady = () => {
+  sceneEl.addEventListener("loaded", () => {
     if (arIntervalId) {
       clearInterval(arIntervalId);
     }
     arIntervalId = setInterval(() => {
       const root = document.getElementById("trackingRoot");
-      const model = document.getElementById("aframeModel");
       if (!root || !window.RepoFusion) return;
       const marker = window.RepoFusion.pose.marker;
       const hasMarker = marker && marker.position && marker.rotation;
-
-      if (hasMarker) {
-        const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
-        const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
-        const targetScale = Math.max(marker.scale || 1, 0.0001);
-
-        if (!markerFound) {
-          markerFound = true;
-          if (model) model.setAttribute("visible", true);
-          if (scanOverlay) scanOverlay.style.display = "none";
-
-          root.object3D.position.copy(targetPosition);
-          root.object3D.quaternion.copy(targetQuat);
-          root.object3D.scale.setScalar(targetScale);
-        } else {
-          root.object3D.position.lerp(targetPosition, 0.35);
-          root.object3D.quaternion.slerp(targetQuat, 0.35);
-
-          const currentScale = root.object3D.scale.x || 1;
-          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
-        }
-      } else {
-        if (markerFound) {
-          markerFound = false;
-          if (model) model.setAttribute("visible", false);
-          if (scanOverlay) scanOverlay.style.display = "flex";
-        }
+      if (!markerFound && hasMarker) {
+        markerFound = true;
+        const model = document.getElementById("aframeModel");
+        if (model) model.setAttribute("visible", true);
+        if (scanOverlay) scanOverlay.style.display = "none";
       }
+      if (!hasMarker) return;
+
+      const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
+      root.object3D.position.lerp(targetPosition, 0.35);
+
+      const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      root.object3D.quaternion.slerp(targetQuat, 0.35);
+
+      const targetScale = Math.max(marker.scale || 1, 0.0001);
+      const currentScale = root.object3D.scale.x || 1;
+      root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
     }, 30);
 
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
@@ -167,7 +154,7 @@ function createARScene(modelSrc) {
       }
     }, 500);
 
-    new THREE.RGBELoader().load("./HDR/terrace_sea.hdr", (hdr) => {
+    new THREE.RGBELoader().load("terrace_sea.hdr", (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
@@ -177,8 +164,6 @@ function createARScene(modelSrc) {
       sceneEl.renderer.setClearColor(0x000000, 0);
     }
     sceneEl.setAttribute('background', 'color: transparent');
-
-    onSceneReady();
 
     if (sceneEl.hasLoaded) {
       sceneEl.emit("runreality");
