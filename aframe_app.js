@@ -330,4 +330,5 @@ function stopAR(){
 
 window.addEventListener("popstate", () => stopAR());
 
+// La llamada inicial a createMV() se hará desde index.html para asegurar que el DOM está listo.
 createMV();

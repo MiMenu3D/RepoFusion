@@ -1,8 +1,5 @@
-const BRIDGE_VERSION = "Bridge v150.5 (Tracking API)";
-// version 150.5
-
-window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.bridge = "150.5";
+const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
+// version 87.3
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
@@ -18,14 +15,6 @@ panel.style.whiteSpace = "pre";
 panel.style.zIndex = "999999";
 panel.style.maxHeight = "85vh";
 panel.style.overflow = "auto";
-panel.style.cursor = "pointer";
-
-let debugCollapsed = false;
-
-panel.addEventListener("click", () => {
-  debugCollapsed = !debugCollapsed;
-  render();
-});
 
 document.body.appendChild(panel);
 
@@ -132,18 +121,7 @@ function render() {
     const video = document.querySelector("video");
     out += "VIDEO: " + (video ? "YES" : "NO");
 
-    if (debugCollapsed) {
-      const firstLine = out.split("\n")[0] || BRIDGE_VERSION;
-      panel.textContent = firstLine;
-      panel.style.maxHeight = "none";
-      panel.style.whiteSpace = "normal";
-      panel.style.overflow = "hidden";
-    } else {
-      panel.textContent = out;
-      panel.style.maxHeight = "85vh";
-      panel.style.whiteSpace = "pre";
-      panel.style.overflow = "auto";
-    }
+    panel.textContent = out;
 }
 
 install();

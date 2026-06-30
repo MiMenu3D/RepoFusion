@@ -1,9 +1,6 @@
-// AR module v150.5
+// AR module v1.3
 // Generated as part of the AR refactor.
-// version 150.5
-
-window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.ar = "150.5";
+// version 1.3
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -20,6 +17,8 @@ let xrLoadPromise = null;
 let envTexture = null;
 let envCanvas = null;
 let video = null;
+let markerFound = false;
+let scanOverlay = null;
 
 function loadScript({ id, src, async = false, attrs = {} }) {
   if (document.getElementById(id)) return;
@@ -34,7 +33,7 @@ function loadScript({ id, src, async = false, attrs = {} }) {
 function loadXR8Assets() {
   loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
   loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
-  loadScript({ id: "bundleScript", src: "bundle.js" });
+  loadScript({ id: "xrConfigScript", src: "xr-config.js" });
   loadScript({ id: "bridgeScript", src: "bridge.js?t=" + Date.now() });
 }
 
@@ -54,10 +53,14 @@ function waitForXR8() {
 }
 
 function createARScene(modelSrc) {
+  markerFound = false;
+  scanOverlay = null;
   const container = document.getElementById("arContainer");
   container.style.background = "transparent";
   container.innerHTML = `
     <a-scene
+      xrweb
+      xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       embedded
@@ -65,22 +68,56 @@ function createARScene(modelSrc) {
       device-orientation-permission-ui="enabled:false">
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
       <a-entity id="trackingRoot">
-        <a-gltf-model id="aframeModel" src="${modelSrc}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
+        <a-gltf-model id="aframeModel" src="${modelSrc}" rotation="90 0 0" scale="1 1 1" visible="false"></a-gltf-model>
       </a-entity>
     </a-scene>`;
 
+  scanOverlay = document.createElement("div");
+  scanOverlay.id = "mindarScanningOverlay";
+  scanOverlay.className = "mindar-ui-scanning";
+  scanOverlay.innerHTML = `<div>Escaneando marcador...</div>`;
+  container.appendChild(scanOverlay);
+
   const sceneEl = container.querySelector("a-scene");
-  sceneEl.addEventListener("loaded", () => {
+
+  const onSceneReady = () => {
     if (arIntervalId) {
       clearInterval(arIntervalId);
     }
     arIntervalId = setInterval(() => {
       const root = document.getElementById("trackingRoot");
-      if (!root || !window.RepoFusion || !window.RepoFusion.pose.marker) return;
+      const model = document.getElementById("aframeModel");
+      if (!root || !window.RepoFusion) return;
       const marker = window.RepoFusion.pose.marker;
-      if (!marker.position || !marker.rotation) return;
-      root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-      root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+      const hasMarker = marker && marker.position && marker.rotation;
+
+      if (hasMarker) {
+        const targetPosition = new THREE.Vector3(marker.position.x, marker.position.y, marker.position.z);
+        const targetQuat = new THREE.Quaternion(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+        const targetScale = Math.max(marker.scale || 1, 0.0001);
+
+        if (!markerFound) {
+          markerFound = true;
+          if (model) model.setAttribute("visible", true);
+          if (scanOverlay) scanOverlay.style.display = "none";
+
+          root.object3D.position.copy(targetPosition);
+          root.object3D.quaternion.copy(targetQuat);
+          root.object3D.scale.setScalar(targetScale);
+        } else {
+          root.object3D.position.lerp(targetPosition, 0.35);
+          root.object3D.quaternion.slerp(targetQuat, 0.35);
+
+          const currentScale = root.object3D.scale.x || 1;
+          root.object3D.scale.setScalar(THREE.MathUtils.lerp(currentScale, targetScale, 0.35));
+        }
+      } else {
+        if (markerFound) {
+          markerFound = false;
+          if (model) model.setAttribute("visible", false);
+          if (scanOverlay) scanOverlay.style.display = "flex";
+        }
+      }
     }, 30);
 
     pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
@@ -91,6 +128,14 @@ function createARScene(modelSrc) {
       if (candidate && candidate.readyState >= 2) {
         clearInterval(waitForVideo);
         video = candidate;
+        video.style.position = "fixed";
+        video.style.top = "0";
+        video.style.left = "0";
+        video.style.width = "100%";
+        video.style.height = "100%";
+        video.style.objectFit = "cover";
+        video.style.zIndex = "50";
+        video.style.pointerEvents = "none";
         cameraEnv = new THREE.VideoTexture(video);
         cameraEnv.colorSpace = THREE.SRGBColorSpace;
 
@@ -122,11 +167,18 @@ function createARScene(modelSrc) {
       }
     }, 500);
 
-    new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
+    new THREE.RGBELoader().load("./HDR/terrace_sea.hdr", (hdr) => {
       hdr.mapping = THREE.EquirectangularReflectionMapping;
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
     });
+
+    if (sceneEl.renderer) {
+      sceneEl.renderer.setClearColor(0x000000, 0);
+    }
+    sceneEl.setAttribute('background', 'color: transparent');
+
+    onSceneReady();
 
     if (sceneEl.hasLoaded) {
       sceneEl.emit("runreality");
@@ -145,7 +197,12 @@ function destroyARScene() {
     clearInterval(arIntervalId);
     arIntervalId = null;
   }
-  document.getElementById("arContainer").innerHTML = "";
+  markerFound = false;
+  scanOverlay = null;
+  const container = document.getElementById("arContainer");
+  if (container) {
+    container.innerHTML = "";
+  }
 }
 
 function startAR(modelSrc) {
@@ -159,20 +216,26 @@ function stopAR() {
   if (window.XR8) {
     try { window.XR8.pause(); } catch (err) { console.warn("XR8.pause failed:", err); }
     try { window.XR8.stop(); } catch (err) { console.warn("XR8.stop failed:", err); }
-    if (window.XR8.clearCameraPipelineModules) {
-      try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
-    }
-    const mediaNodes = document.querySelectorAll("video, canvas");
-    mediaNodes.forEach((node) => {
-      if (node.tagName === "VIDEO") {
-        try { node.srcObject = null; } catch (err) { console.warn("clear video srcObject failed", err); }
-      }
-      if (!node.closest("#mvContainer")) {
-        node.remove();
-      }
-    });
+    try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
   }
+
+  const videos = document.querySelectorAll("video");
+  videos.forEach((videoEl) => {
+    try {
+      videoEl.pause();
+      videoEl.style.display = "none";
+      if (videoEl.srcObject && videoEl.srcObject.getTracks) {
+        videoEl.srcObject.getTracks().forEach((track) => track.stop());
+      }
+      videoEl.srcObject = null;
+    } catch (err) {
+      console.warn("Error cleaning video element:", err);
+    }
+  });
+
   destroyARScene();
+  xrLoadPromise = null;
+  envMode = "hdr";
 }
 
 window.AR.isReady = true;

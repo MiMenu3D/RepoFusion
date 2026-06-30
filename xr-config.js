@@ -1,4 +1,3 @@
-// Version 1.1
 // 8th Wall image target configuration
 // Only configure the tracker, do not auto-start the 8th Wall scene.
 window.xrConfigData = {
