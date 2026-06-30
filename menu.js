@@ -1,6 +1,6 @@
-// Menu module v1.3
+// Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.3
+// version 1.2
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
