@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx11
+// version 1.2 TimeTravelx08
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -120,43 +120,89 @@ function ensureARModule() {
   });
 }
 
-function startAR(){
-  history.pushState({mode:"ar", current}, "");
-  ensureARModule().then((AR) => {
-    destroyMV();
-    document.getElementById("startScreen").style.display = "none";
-    document.getElementById("arContainer").style.display = "block";
-    document.body.style.background = "transparent";
-    const envToggle = document.getElementById("envToggle");
-    if (envToggle) envToggle.style.display = "block";
-    AR.startAR(models[current]).catch((err) => {
-      console.warn("AR.startAR failed:", err);
+function startAR() {
+  // 1. Crear el contenedor de la escena directamente
+  const container = document.getElementById("arContainer");
+  container.style.display = "block";
+  container.innerHTML = `
+    <a-scene 
+      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;" 
+      renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;" 
+      vr-mode-ui="enabled:false">
+      <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
+      <a-entity id="trackingRoot" mindar-image-target="targetIndex: 0">
+        <a-gltf-model id="aframeModel" src="${models[current]}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
+      </a-entity>
+    </a-scene>`;
+
+  // 2. Configurar el PMREM y eventos tras la carga
+  const sceneEl = container.querySelector("a-scene");
+  sceneEl.addEventListener("loaded", () => {
+    // Aquí iría tu lógica de PMREM y el bucle de luces que ya funciona
+    console.log("Escena A-Frame montada y lista para PMREM");
+    
+    // --- Inicio bloque PMREM y Luces ---
+    pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const waitForVideo = setInterval(() => {
+      const candidate = document.querySelector("video");
+      if (candidate && candidate.readyState >= 2) {
+        clearInterval(waitForVideo);
+        const video = candidate;
+        video.style.position = "fixed";
+        video.style.top = "0"; video.style.left = "0";
+        video.style.width = "100%"; video.style.height = "100%";
+        video.style.objectFit = "cover";
+        video.style.zIndex = "50";
+        
+        const envCanvas = document.createElement("canvas");
+        envCanvas.width = 64; envCanvas.height = 64;
+        const envTexture = new THREE.CanvasTexture(envCanvas);
+        envTexture.mapping = THREE.EquirectangularReflectionMapping;
+        const ctx = envCanvas.getContext("2d");
+        let smoothed = 120;
+
+        window.envInterval = setInterval(() => {
+          if (!video || video.readyState < 2) return;
+          ctx.drawImage(video, 0, 0, 64, 64);
+          envTexture.needsUpdate = true;
+          if (pmremGenerator) {
+            const cameraRT = pmremGenerator.fromEquirectangular(envTexture);
+            // Si el modo es cam, aplicar textura al entorno
+            sceneEl.object3D.environment = cameraRT.texture;
+            cameraRT.dispose();
+          }
+        }, 50);
+      }
+    }, 500);
+
+    new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
+      hdr.mapping = THREE.EquirectangularReflectionMapping;
+      sceneEl.object3D.environment = hdr;
     });
-  }).catch((err) => {
-    console.warn("No se pudo cargar el módulo AR:", err);
-  });
+// --- Fin bloque PMREM ---
+
+  }, {once: true});
+
+  destroyMV();
+  document.getElementById("startScreen").style.display = "none";
 }
 
-function stopAR(){
-  // 1. Limpieza de motores y eventos
-  if (window.destroyBridge) window.destroyBridge();
-  if (window.AR && typeof window.AR.stopAR === "function") {
-    window.AR.stopAR();
+function destroyAR() {
+  if (window.envInterval) {
+    clearInterval(window.envInterval);
+    window.envInterval = null;
   }
-
-  // 2. Limpieza de UI persistente
-  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
-  const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) bridgePanel.remove();
-
-  // 3. Vaciado del contenedor AR
   document.getElementById("arContainer").innerHTML = "";
+}
+
+function stopAR() {
+  // 1. Limpieza total llamando a la función específica
+  destroyAR();
   document.getElementById("arContainer").style.display = "none";
 
-  // 4. Resetear fondo y pantalla inicial
-  document.body.style.background = "#1f1a17";
+  // 2. Restaurar menú
   document.getElementById("startScreen").style.display = "flex";
-
-  // 5. Reconstruir el menú al final
   createMV();
 }
