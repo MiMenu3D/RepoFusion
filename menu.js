@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx07
+// version 1.2 TimeTravelx08
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -138,6 +138,10 @@ function startAR(){
 }
 
 function stopAR(){
+  if (window.destroyBridge) {
+    window.destroyBridge();
+  }
+
   if (window.AR && typeof window.AR.stopAR === "function") {
     window.AR.stopAR();
   }

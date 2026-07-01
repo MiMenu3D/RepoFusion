@@ -1,5 +1,5 @@
 const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
-// version 87.3 TimeTravelx04
+// version 87.3 TimeTravelx08
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
@@ -138,5 +138,12 @@ function render() {
     panel.textContent = out;
 }
 
-install();
-setInterval(render, 150);
+let renderInterval = setInterval(render, 150);
+
+window.destroyBridge = function() {
+    if (renderInterval) clearInterval(renderInterval);
+    const panel = document.getElementById("bridgeDebugPanel");
+    if (panel) panel.remove();
+    window.Tracking = null;
+};
+
