@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx06
+// version 1.2 TimeTravelx07
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -145,7 +145,10 @@ function stopAR(){
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
+  
+  document.getElementById("arContainer").innerHTML = "";
   document.getElementById("arContainer").style.display = "none";
+  
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
   document.body.style.background = "#1f1a17";
