@@ -1,6 +1,6 @@
 // AR module v1.2
 // Generated as part of the AR refactor.
-// version 1.2
+// version 1.2 TimeTravel08
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -168,16 +168,24 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
+  const scriptsToCleanup = ["runtimeScript", "xrScript", "xrConfigScript", "bridgeScript"];
+  scriptsToCleanup.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+  });
+
   if (window.XR8) {
     try { window.XR8.pause(); } catch (err) { console.warn("XR8.pause failed:", err); }
     try { window.XR8.stop(); } catch (err) { console.warn("XR8.stop failed:", err); }
     try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
-    const videoEl = document.querySelector("video");
-    if (videoEl) {
-      videoEl.style.display = "none";
-      videoEl.srcObject = null;
-    }
+    delete window.XR8;
   }
+  const videoEl = document.querySelector("video");
+  if (videoEl) {
+    videoEl.style.display = "none";
+    videoEl.srcObject = null;
+  }
+  
   destroyARScene();
   xrLoadPromise = null;
   envMode = "hdr";
