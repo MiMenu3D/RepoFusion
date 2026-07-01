@@ -182,6 +182,16 @@ function destroyARScene() {
     clearInterval(arIntervalId);
     arIntervalId = null;
   }
+
+  // Limpieza real de A-Frame y WebGL
+  const sceneEl = document.querySelector("a-scene");
+  if (sceneEl) {
+    if (sceneEl.renderer) {
+      sceneEl.renderer.dispose();
+    }
+    sceneEl.parentElement.removeChild(sceneEl);
+  }
+
   markerFound = false;
   scanOverlay = null;
   const container = document.getElementById("arContainer");
