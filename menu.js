@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx10
+// version 1.2 TimeTravelx08
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -138,58 +138,25 @@ function startAR(){
 }
 
 function stopAR(){
-  if (window.destroyBridge) {
-    window.destroyBridge();
-  }
-
+  // 1. Limpieza de motores y eventos
+  if (window.destroyBridge) window.destroyBridge();
   if (window.AR && typeof window.AR.stopAR === "function") {
     window.AR.stopAR();
   }
 
+  // 2. Limpieza de UI persistente
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
-  
+
+  // 3. Vaciado del contenedor AR
   document.getElementById("arContainer").innerHTML = "";
   document.getElementById("arContainer").style.display = "none";
-  
-  const envToggle = document.getElementById("envToggle");
-  if (envToggle) envToggle.style.display = "none";
+
+  // 4. Resetear fondo y pantalla inicial
   document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
+
+  // 5. Reconstruir el menú al final
   createMV();
 }
-
-window.addEventListener("popstate", () => stopAR());
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-window.toggleEnv = function() {
-  if (window.AR && typeof window.AR.toggleEnv === "function") {
-    window.AR.toggleEnv();
-  }
-};
-
-window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "");
-  document.getElementById("envToggle").style.display = "none";
-  const versionPanel = document.getElementById("versionPanel");
-  if (versionPanel) {
-    versionPanel.textContent = "VERSION v" + APP_VERSION + "\nmenu.js + ar.js + xr-config.js + bridge.js\nTap para contraer";
-    versionPanel.addEventListener("click", () => {
-      versionPanel.classList.toggle("collapsed");
-    });
-  }
-  createMV();
-});
