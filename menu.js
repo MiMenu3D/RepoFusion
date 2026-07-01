@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx04
+// version 1.2 TimeTravelx05
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -127,11 +127,6 @@ function startAR(){
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
     document.body.style.background = "transparent";
-    const lightDebug = document.getElementById("lightDebug");
-    if (lightDebug) {
-      lightDebug.textContent = "";
-      lightDebug.style.display = "none";
-    }
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
     AR.startAR(models[current]).catch((err) => {
@@ -147,11 +142,6 @@ function stopAR(){
     window.AR.stopAR();
   }
 
-  const lightDebug = document.getElementById("lightDebug");
-  if (lightDebug) {
-    lightDebug.textContent = "";
-    lightDebug.style.display = "none";
-  }
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
