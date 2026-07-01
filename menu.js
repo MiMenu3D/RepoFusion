@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx05
+// version 1.2 TimeTravelx06
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -121,8 +121,8 @@ function ensureARModule() {
 }
 
 function startAR(){
+  history.pushState({mode:"ar", current}, "");
   ensureARModule().then((AR) => {
-    history.pushState({mode:"ar", current}, "");
     destroyMV();
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
@@ -154,6 +154,19 @@ function stopAR(){
 }
 
 window.addEventListener("popstate", () => stopAR());
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 window.toggleEnv = function() {
   if (window.AR && typeof window.AR.toggleEnv === "function") {
