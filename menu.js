@@ -1,6 +1,7 @@
-// Menu module v1.2
+// Menu module v1.3
 // Generated as part of the AR refactor.
-// version 1.2 TimeTravelx12
+// version 1.3
+
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
 window.RepoFusion.pose = {
@@ -20,7 +21,6 @@ window.RepoFusion.setPose = function (data) {
 
 let current = 0;
 let mv = null;
-const APP_VERSION = "3.4-dreamteam";
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
   "Plato_05.glb","Plato_06.glb","Plato_07.glb","Plato_08.glb",
@@ -119,89 +119,64 @@ function ensureARModule() {
   });
 }
 
-function startAR() {
-  // 1. Crear el contenedor de la escena directamente
-  const container = document.getElementById("arContainer");
-  container.style.display = "block";
-  container.innerHTML = `
-    <a-scene 
-      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;" 
-      renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;" 
-      vr-mode-ui="enabled:false">
-      <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-      <a-entity id="trackingRoot" mindar-image-target="targetIndex: 0">
-        <a-gltf-model id="aframeModel" src="${models[current]}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
-      </a-entity>
-    </a-scene>`;
-
-  // 2. Configurar el PMREM y eventos tras la carga
-  const sceneEl = container.querySelector("a-scene");
-  sceneEl.addEventListener("loaded", () => {
-    // Aquí iría tu lógica de PMREM y el bucle de luces que ya funciona
-    console.log("Escena A-Frame montada y lista para PMREM");
-    
-    // --- Inicio bloque PMREM y Luces ---
-    pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
-    pmremGenerator.compileEquirectangularShader();
-
-    const waitForVideo = setInterval(() => {
-      const candidate = document.querySelector("video");
-      if (candidate && candidate.readyState >= 2) {
-        clearInterval(waitForVideo);
-        const video = candidate;
-        video.style.position = "fixed";
-        video.style.top = "0"; video.style.left = "0";
-        video.style.width = "100%"; video.style.height = "100%";
-        video.style.objectFit = "cover";
-        video.style.zIndex = "50";
-        
-        const envCanvas = document.createElement("canvas");
-        envCanvas.width = 64; envCanvas.height = 64;
-        const envTexture = new THREE.CanvasTexture(envCanvas);
-        envTexture.mapping = THREE.EquirectangularReflectionMapping;
-        const ctx = envCanvas.getContext("2d");
-        let smoothed = 120;
-
-        window.envInterval = setInterval(() => {
-          if (!video || video.readyState < 2) return;
-          ctx.drawImage(video, 0, 0, 64, 64);
-          envTexture.needsUpdate = true;
-          if (pmremGenerator) {
-            const cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-            // Si el modo es cam, aplicar textura al entorno
-            sceneEl.object3D.environment = cameraRT.texture;
-            cameraRT.dispose();
-          }
-        }, 50);
-      }
-    }, 500);
-
-    new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
-      hdr.mapping = THREE.EquirectangularReflectionMapping;
-      sceneEl.object3D.environment = hdr;
+function startAR(){
+  ensureARModule().then((AR) => {
+    history.pushState({mode:"ar", current}, "");
+    destroyMV();
+    document.getElementById("startScreen").style.display = "none";
+    document.getElementById("arContainer").style.display = "block";
+    document.body.style.background = "transparent";
+    const envToggle = document.getElementById("envToggle");
+    if (envToggle) envToggle.style.display = "block";
+    AR.startAR(models[current]).catch((err) => {
+      console.warn("AR.startAR failed:", err);
     });
-// --- Fin bloque PMREM ---
-
-  }, {once: true});
-
-  destroyMV();
-  document.getElementById("startScreen").style.display = "none";
+  }).catch((err) => {
+    console.warn("No se pudo cargar el módulo AR:", err);
+  });
 }
 
-function destroyAR() {
-  if (window.envInterval) {
-    clearInterval(window.envInterval);
-    window.envInterval = null;
+function stopAR(){
+  if (window.AR && typeof window.AR.stopAR === "function") {
+    window.AR.stopAR();
   }
-  document.getElementById("arContainer").innerHTML = "";
-}
 
-function stopAR() {
-  // 1. Limpieza total llamando a la función específica
-  destroyAR();
+    // Limpieza agresiva
+  const arScript = document.getElementById("arModuleScript");
+  if (arScript) arScript.remove(); 
+  window.AR = null; 
+
+  document.getElementById("lightDebug").style.display = "none";
+  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
+  const bridgePanel = document.getElementById("bridgeDebugPanel");
+  if (bridgePanel) bridgePanel.remove();
   document.getElementById("arContainer").style.display = "none";
-
-  // 2. Restaurar menú
+  const envToggle = document.getElementById("envToggle");
+  if (envToggle) envToggle.style.display = "none";
+  document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
-  createMV();
+  
+  setTimeout(() => {
+      createMV();
+  }, 100);
+  
+  history.replaceState({mode:"menu", current}, "");
 }
+
+window.addEventListener("popstate", (event) => {
+  if (!event.state || event.state.mode !== "ar") {
+    stopAR();
+  }
+});
+
+window.toggleEnv = function() {
+  if (window.AR && typeof window.AR.toggleEnv === "function") {
+    window.AR.toggleEnv();
+  }
+};
+
+window.addEventListener("DOMContentLoaded", () => {
+  history.replaceState({mode:"menu", current}, "");
+  document.getElementById("envToggle").style.display = "none";
+  createMV();
+});

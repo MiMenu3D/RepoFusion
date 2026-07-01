@@ -1,5 +1,5 @@
 const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
-// version 87.3 TimeTravelx08
+// version 87.3
 
 const panel = document.createElement("div");
 panel.id = "bridgeDebugPanel";
@@ -15,17 +15,8 @@ panel.style.whiteSpace = "pre";
 panel.style.zIndex = "999999";
 panel.style.maxHeight = "85vh";
 panel.style.overflow = "auto";
-panel.style.cursor = "pointer";
-panel.title = "Tap para contraer/expandir";
 
 document.body.appendChild(panel);
-
-let panelCollapsed = false;
-panel.addEventListener("click", () => {
-    panelCollapsed = !panelCollapsed;
-    panel.style.maxHeight = panelCollapsed ? "20px" : "85vh";
-    panel.style.overflow = panelCollapsed ? "hidden" : "auto";
-});
 
 // ===================================================================
 // TRACKING API GLOBAL
@@ -109,13 +100,8 @@ function waitForXR8() {
 waitForXR8();
 
 function render() {
-    let out = BRIDGE_VERSION + (panelCollapsed ? " [min]" : " [max]") + "\n\n";
 
-    if (panelCollapsed) {
-        out += "TRACKING: " + window.Tracking.tracking;
-        panel.textContent = out;
-        return;
-    }
+    let out = BRIDGE_VERSION + "\n\n";
 
     out += "TRACKING: " + window.Tracking.tracking + "\n\n";
 
@@ -138,12 +124,5 @@ function render() {
     panel.textContent = out;
 }
 
-let renderInterval = setInterval(render, 150);
-
-window.destroyBridge = function() {
-    if (renderInterval) clearInterval(renderInterval);
-    const panel = document.getElementById("bridgeDebugPanel");
-    if (panel) panel.remove();
-    window.Tracking = null;
-};
-
+install();
+setInterval(render, 150);
