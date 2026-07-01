@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 3.4 TimeTravelx03 -->
+<!-- version 3.4 TimeTravelx04 -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -106,6 +106,29 @@ a-scene { width:100%; height:100%; }
   pointer-events: none;
   display: none;
 }
+
+#versionPanel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 99998;
+  background: rgba(0,0,0,0.85);
+  color: #00ff00;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: monospace;
+  max-height: 180px;
+  overflow-y: auto;
+  cursor: pointer;
+  user-select: none;
+  white-space: pre-wrap;
+}
+
+#versionPanel.collapsed {
+  max-height: 20px;
+  overflow: hidden;
+}
 </style>
 </head>
 
@@ -114,7 +137,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">TimeTravelx03 3.4 HDR</div>
+  <div id="prueba">TimeTravelx04 3.4 HDR</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -131,7 +154,9 @@ a-scene { width:100%; height:100%; }
 Env: HDR
 </button>
 
-<div id="lightDebug">LIGHT --</div>
+<div id="lightDebug"></div>
+<div id="versionPanel">VERSION v3.4
+Tap para contraer</div>
 
 <script src="menu.js"></script>
 </body>

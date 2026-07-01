@@ -1,6 +1,6 @@
 // Menu module v1.2
 // Generated as part of the AR refactor.
-// version 1.2
+// version 1.2 TimeTravelx04
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -21,6 +21,7 @@ window.RepoFusion.setPose = function (data) {
 
 let current = 0;
 let mv = null;
+const APP_VERSION = "3.4-dreamteam";
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
   "Plato_05.glb","Plato_06.glb","Plato_07.glb","Plato_08.glb",
@@ -126,6 +127,11 @@ function startAR(){
     document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
     document.body.style.background = "transparent";
+    const lightDebug = document.getElementById("lightDebug");
+    if (lightDebug) {
+      lightDebug.textContent = "";
+      lightDebug.style.display = "none";
+    }
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
     AR.startAR(models[current]).catch((err) => {
@@ -141,7 +147,11 @@ function stopAR(){
     window.AR.stopAR();
   }
 
-  document.getElementById("lightDebug").style.display = "none";
+  const lightDebug = document.getElementById("lightDebug");
+  if (lightDebug) {
+    lightDebug.textContent = "";
+    lightDebug.style.display = "none";
+  }
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
@@ -151,14 +161,9 @@ function stopAR(){
   document.body.style.background = "#1f1a17";
   document.getElementById("startScreen").style.display = "flex";
   createMV();
-  history.replaceState({mode:"menu", current}, "");
 }
 
-window.addEventListener("popstate", (event) => {
-  if (!event.state || event.state.mode !== "ar") {
-    stopAR();
-  }
-});
+window.addEventListener("popstate", () => stopAR());
 
 window.toggleEnv = function() {
   if (window.AR && typeof window.AR.toggleEnv === "function") {
@@ -169,5 +174,12 @@ window.toggleEnv = function() {
 window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({mode:"menu", current}, "");
   document.getElementById("envToggle").style.display = "none";
+  const versionPanel = document.getElementById("versionPanel");
+  if (versionPanel) {
+    versionPanel.textContent = "VERSION v" + APP_VERSION + "\nmenu.js + ar.js + xr-config.js + bridge.js\nTap para contraer";
+    versionPanel.addEventListener("click", () => {
+      versionPanel.classList.toggle("collapsed");
+    });
+  }
   createMV();
 });
