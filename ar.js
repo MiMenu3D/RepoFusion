@@ -1,6 +1,6 @@
 // AR module v1.3
 // Generated as part of the AR refactor.
-// version 1.3
+// TimeTravel16
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
