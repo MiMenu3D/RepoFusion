@@ -7,7 +7,7 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>A-Frame AR - Version Unified 1.04 </title>
+<title>A-Frame AR - Version Unified 1.05 </title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -112,7 +112,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba"> Version Unified 1.04 </div>
+  <div id="prueba"> Version Unified 1.05 </div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -125,28 +125,28 @@ a-scene { width:100%; height:100%; }
 
 <div id="arContainer"></div>
   <button id="envToggle" onclick="toggleEnv()"
-  style="
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 99999;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: none;
-  background: white;
-  color: black;
-  font-size: 14px;
-  ">
-  Env: HDR
-  </button>
-
-  <div id="bridgeDebugPanel" 
-       onclick="this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px')"
-       style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.85); color: lime; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre; z-index: 999999; max-height: 20px; overflow: hidden; cursor: pointer; display: none;">
-    Bridge Info: Esperando...
-  </div>
+style="
+position: fixed;
+bottom: 20px;
+right: 20px;
+z-index: 99999;
+padding: 12px 16px;
+border-radius: 12px;
+border: none;
+background: white;
+color: black;
+font-size: 14px;
+">
+Env: HDR
+</button>
 
 <div id="lightDebug">LIGHT --</div>
+
+<div id="bridgeDebugPanel" 
+     onclick="this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px')"
+     style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.85); color: lime; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre; z-index: 999999; max-height: 20px; overflow: hidden; cursor: pointer; display: none;">
+  Bridge Info: Esperando...
+</div>
 
 <script>
 // RepoFusion bridge listener v1.0
@@ -165,6 +165,15 @@ window.RepoFusion.setPose = function (data) {
   window.RepoFusion.pose.marker = data.marker || null;
   window.RepoFusion.pose.intrinsics = data.intrinsics || null;
   window.RepoFusion.pose.tracking = data.tracking || "unknown";
+
+  const panel = document.getElementById("bridgeDebugPanel");
+  if (panel) {
+    let out = "Bridge v87.3 (Tracking API)\n\n";
+    out += "TRACKING: " + window.RepoFusion.pose.tracking + "\n\n";
+    out += "CAMERA:\n" + JSON.stringify(window.RepoFusion.pose.camera, null, 2) + "\n\n";
+    out += "MARKER:\n" + JSON.stringify(window.RepoFusion.pose.marker, null, 2);
+    panel.textContent = out;
+  }
 };
 </script>
 <script>
@@ -249,7 +258,7 @@ function createAR(){
 
   const sceneEl = container.querySelector("a-scene");
 
-    sceneEl.addEventListener("loaded", () => {
+  sceneEl.addEventListener("loaded", () => {
 
     console.log("A-Frame cargado");
     pmremGenerator =
@@ -258,7 +267,19 @@ function createAR(){
 pmremGenerator.compileEquirectangularShader();
 
 console.log("PMREM listo");
+    const prueba = document.getElementById("lightDebug");
 
+setTimeout(() => {
+
+  if (sceneEl.renderer) {
+    prueba.style.display = "block";
+    prueba.innerText = "RENDERER OK";
+  } else {
+    prueba.style.display = "block";
+    prueba.innerText = "NO RENDERER";
+  }
+
+}, 1000);
     setTimeout(() => {
 
   const video = document.querySelector("video");
@@ -271,8 +292,11 @@ console.log("PMREM listo");
   console.log("Camera texture lista");
 
 }
+  const prueba = document.getElementById("lightDebug");
+prueba.style.display = "block";
 
   if (!video) {
+    prueba.innerText = "NO VIDEO";
     return;
   }
 
@@ -328,9 +352,7 @@ envInterval = setInterval(() => {
   // mapping a exposure usable
   const exposure = 0.6 + (smoothed / 255) * 0.9;
 
-  const scene = document.querySelector("a-scene");
-
-  if (scene && scene.renderer) {
+    if (scene && scene.renderer) {
     scene.renderer.exposure = exposure;
   }
   if (envMode === "cam" && cameraRT) {
@@ -401,7 +423,6 @@ function next(){
 
 function startAR(){
   // --- AÑADIMOS EL ARRANQUE DE 8TH WALL AQUÍ ---
-  document.getElementById("bridgeDebugPanel").style.display = "block";
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
   document.body.appendChild(bundle);
@@ -420,7 +441,6 @@ function startAR(){
 
 function stopAR(){
   destroyAR();
-  document.getElementById("bridgeDebugPanel").style.display = "none";
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning")
   .forEach(el => el.remove());
@@ -476,3 +496,4 @@ function toggleEnv(){
 
 </body>
 </html>
+
