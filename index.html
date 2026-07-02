@@ -7,7 +7,7 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>A-Frame AR - Version Unified 1.06 </title>
+<title>A-Frame AR - Version Unified 1.07 </title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -112,7 +112,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba"> Version Unified 1.06 </div>
+  <div id="prueba"> Version Unified 1.07 </div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -180,7 +180,7 @@ window.RepoFusion.pose = { camera: null, marker: null, intrinsics: null, trackin
 
 function installBridge() {
     if (!window.XR8) {
-        panel.textContent = BRIDGE_VERSION + "\nXR8 not found";
+        panel.textContent = BRIDGE_VERSION + "\nXR8 not found (Retrying...)";
         return;
     }
 
@@ -200,7 +200,7 @@ function installBridge() {
             window.RepoFusion.pose.tracking = reality.trackingStatus || "unknown";
         }
     });
-    panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
+        panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
 }
 
 function renderBridge() {
@@ -211,8 +211,8 @@ function renderBridge() {
     panel.textContent = out;
 }
 
-if (window.XR8) { installBridge(); } 
-else { window.addEventListener("xrloaded", installBridge, { once: true }); }
+// Inyectar el pipeline directamente si XR8 existe, sino esperar
+window.addEventListener("xrloaded", installBridge, { once: true });
 setInterval(renderBridge, 150);
 </script>
 <script>
@@ -464,13 +464,14 @@ function startAR(){
   // --- ARRANQUE DE 8TH WALL ---
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
+  bundle.async = true;
   document.body.appendChild(bundle);
   // ----------------------------
   
   // Mostrar el botón de entorno al iniciar AR
   document.getElementById("envToggle").style.display = "block";
 
-  history.pushState({mode:"ar", current}, "");
+  history.pushState({mode:"ar"}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
@@ -485,10 +486,17 @@ function stopAR(){
   
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
-  createMV();
+  if (!mv) createMV();
 }
 
-window.addEventListener("popstate", () => stopAR());
+// ---------------------------------------------
+// Inicialización de historial y carga inicial
+window.history.replaceState({mode:"menu"}, "");
+window.addEventListener("popstate", (event) => {
+  if (event.state?.mode !== "ar") {
+    stopAR();
+  }
+});
 createMV();
 
 function toggleEnv(){
