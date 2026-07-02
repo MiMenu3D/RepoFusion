@@ -7,7 +7,7 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>A-Frame AR - Version Unified 1.05 </title>
+<title>A-Frame AR - Version Unified 1.06 </title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
@@ -112,7 +112,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba"> Version Unified 1.05 </div>
+  <div id="prueba"> Version Unified 1.06 </div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -125,20 +125,21 @@ a-scene { width:100%; height:100%; }
 
 <div id="arContainer"></div>
   <button id="envToggle" onclick="toggleEnv()"
-style="
-position: fixed;
-bottom: 20px;
-right: 20px;
-z-index: 99999;
-padding: 12px 16px;
-border-radius: 12px;
-border: none;
-background: white;
-color: black;
-font-size: 14px;
-">
-Env: HDR
-</button>
+  style="
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99999;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: white;
+  color: black;
+  font-size: 14px;
+  display: none;
+  ">
+  Env: HDR
+  </button>
 
 <div id="lightDebug">LIGHT --</div>
 
@@ -149,32 +150,70 @@ Env: HDR
 </div>
 
 <script>
-// RepoFusion bridge listener v1.0
-window.RepoFusion = window.RepoFusion || {};
+// ===================================================================
+// BRIDGE DEBUG (Incorporado de Success 04)
+// ===================================================================
+const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
 
-window.RepoFusion.pose = {
-  camera: null,
-  marker: null,
-  intrinsics: null,
-  tracking: "waiting"
+const panel = document.createElement("div");
+panel.id = "bridgeDebugPanel";
+panel.style.position = "fixed";
+panel.style.top = "10px";
+panel.style.left = "10px";
+panel.style.background = "rgba(0,0,0,0.85)";
+panel.style.color = "lime";
+panel.style.padding = "10px";
+panel.style.fontFamily = "monospace";
+panel.style.fontSize = "12px";
+panel.style.whiteSpace = "pre";
+panel.style.zIndex = "999999";
+panel.style.maxHeight = "20px";
+panel.style.overflow = "hidden";
+panel.style.cursor = "pointer";
+panel.onclick = function() {
+  this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px');
 };
+document.body.appendChild(panel);
 
-window.RepoFusion.setPose = function (data) {
-  if (!data) return;
-  window.RepoFusion.pose.camera = data.camera || null;
-  window.RepoFusion.pose.marker = data.marker || null;
-  window.RepoFusion.pose.intrinsics = data.intrinsics || null;
-  window.RepoFusion.pose.tracking = data.tracking || "unknown";
+window.RepoFusion = window.RepoFusion || {};
+window.RepoFusion.pose = { camera: null, marker: null, intrinsics: null, tracking: "waiting" };
 
-  const panel = document.getElementById("bridgeDebugPanel");
-  if (panel) {
-    let out = "Bridge v87.3 (Tracking API)\n\n";
+function installBridge() {
+    if (!window.XR8) {
+        panel.textContent = BRIDGE_VERSION + "\nXR8 not found";
+        return;
+    }
+
+    XR8.addCameraPipelineModule({
+        name: "bridge-exporter",
+        onUpdate: ({ processCpuResult }) => {
+            const reality = processCpuResult?.reality;
+            if (!reality) return;
+
+            window.RepoFusion.pose.camera = { rotation: reality.rotation, position: reality.position };
+            window.RepoFusion.pose.marker = reality.detectedImages?.[0] ? {
+                position: reality.detectedImages[0].position,
+                rotation: reality.detectedImages[0].rotation,
+                scale: reality.detectedImages[0].scale || 1
+            } : null;
+            window.RepoFusion.pose.intrinsics = reality.intrinsics || null;
+            window.RepoFusion.pose.tracking = reality.trackingStatus || "unknown";
+        }
+    });
+    panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
+}
+
+function renderBridge() {
+    let out = BRIDGE_VERSION + "\n\n";
     out += "TRACKING: " + window.RepoFusion.pose.tracking + "\n\n";
     out += "CAMERA:\n" + JSON.stringify(window.RepoFusion.pose.camera, null, 2) + "\n\n";
     out += "MARKER:\n" + JSON.stringify(window.RepoFusion.pose.marker, null, 2);
     panel.textContent = out;
-  }
-};
+}
+
+if (window.XR8) { installBridge(); } 
+else { window.addEventListener("xrloaded", installBridge, { once: true }); }
+setInterval(renderBridge, 150);
 </script>
 <script>
 let current = 0;
@@ -422,15 +461,14 @@ function next(){
 }
 
 function startAR(){
-  // --- AÑADIMOS EL ARRANQUE DE 8TH WALL AQUÍ ---
+  // --- ARRANQUE DE 8TH WALL ---
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
   document.body.appendChild(bundle);
-
-  const bridge = document.createElement("script");
-  bridge.src = "bridge.js?t=" + Date.now();
-  document.body.appendChild(bridge);
-  // ---------------------------------------------
+  // ----------------------------
+  
+  // Mostrar el botón de entorno al iniciar AR
+  document.getElementById("envToggle").style.display = "block";
 
   history.pushState({mode:"ar", current}, "");
   destroyMV();
@@ -442,8 +480,9 @@ function startAR(){
 function stopAR(){
   destroyAR();
   document.getElementById("lightDebug").style.display = "none";
-  document.querySelectorAll(".mindar-ui-scanning")
-  .forEach(el => el.remove());
+  // Ocultar el botón de entorno al salir
+  document.getElementById("envToggle").style.display = "none";
+  
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
   createMV();
