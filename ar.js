@@ -1,4 +1,4 @@
-// ar.js - Monolito de AR (8th Wall + A-Frame)
+// ar.js - Monolito de AR (8th Wall + A-Frame) version Unified 1.0
 window.initAR = (modelSrc) => {
   const container = document.getElementById("arContainer");
   container.innerHTML = `
