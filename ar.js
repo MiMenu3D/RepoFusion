@@ -1,6 +1,6 @@
 // AR module v1.3
 // Generated as part of the AR refactor.
-// TimeTravel15
+// version 1.3
 
 window.AR = window.AR || {};
 window.AR.isReady = false;
@@ -208,12 +208,16 @@ function startAR(modelSrc) {
 }
 
 function stopAR() {
+  // 1. PRIMERO: Detener el pipeline de 8th Wall antes de tocar el DOM
   if (window.XR8) {
-    try { window.XR8.pause(); } catch (err) { console.warn("XR8.pause failed:", err); }
-    try { window.XR8.stop(); } catch (err) { console.warn("XR8.stop failed:", err); }
-    try { window.XR8.clearCameraPipelineModules(); } catch (err) { console.warn("XR8.clearCameraPipelineModules failed:", err); }
+    try { 
+      window.XR8.pause(); 
+      window.XR8.stop(); 
+      window.XR8.clearCameraPipelineModules(); 
+    } catch (err) { console.warn("Error deteniendo XR8:", err); }
   }
 
+  // 2. SEGUNDO: Matar el stream de la cámara explícitamente
   const videos = document.querySelectorAll("video");
   videos.forEach((videoEl) => {
     try {
@@ -223,14 +227,17 @@ function stopAR() {
         videoEl.srcObject.getTracks().forEach((track) => track.stop());
       }
       videoEl.srcObject = null;
-    } catch (err) {
-      console.warn("Error cleaning video element:", err);
-    }
+      videoEl.remove(); // Eliminar el elemento video del DOM es vital
+    } catch (err) { console.warn("Error cerrando cámara:", err); }
   });
 
+  // 3. TERCERO: Limpiar A-Frame y los intervalos de renderizado
   destroyARScene();
+
+  // 4. CUARTO: Resetear variables
   xrLoadPromise = null;
   envMode = "hdr";
+  window.XR8 = null; // Forzamos la limpieza del objeto global
 }
 
 window.AR.isReady = true;
