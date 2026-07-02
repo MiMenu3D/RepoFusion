@@ -7,10 +7,9 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>A-Frame AR - Version Unified 1.03 </title>
+<title>A-Frame AR - Version Unified 1.04 </title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
@@ -93,7 +92,18 @@ model-viewer {
 }
 
 a-scene { width:100%; height:100%; }
-  .mindar-ui-scanning { z-index:51 !important; }
+.mindar-ui-scanning { z-index:51 !important; }
+  #lightDebug {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999;
+  color: white;
+  font-size: 22px;
+  text-shadow: 0 0 10px black;
+  pointer-events: none;
+  display: none;
+}
 </style>
 </head>
 
@@ -102,7 +112,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba"> Version Unified 1.03 </div>
+  <div id="prueba"> Version Unified 1.04 </div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -130,14 +140,13 @@ a-scene { width:100%; height:100%; }
   Env: HDR
   </button>
 
-  <div id="bridgeDebug" 
-       onclick="this.style.height = (this.style.height === '20px' ? 'auto' : '20px')"
-       style="position: fixed; top: 80px; left: 20px; z-index: 99999; 
-       background: rgba(0, 128, 0, 0.8); color: white; padding: 10px; 
-       font-family: monospace; font-size: 12px; cursor: pointer; 
-       overflow: hidden; height: auto;">
+  <div id="bridgeDebugPanel" 
+       onclick="this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px')"
+       style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.85); color: lime; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre; z-index: 999999; max-height: 20px; overflow: hidden; cursor: pointer; display: none;">
     Bridge Info: Esperando...
   </div>
+
+<div id="lightDebug">LIGHT --</div>
 
 <script>
 // RepoFusion bridge listener v1.0
@@ -156,10 +165,6 @@ window.RepoFusion.setPose = function (data) {
   window.RepoFusion.pose.marker = data.marker || null;
   window.RepoFusion.pose.intrinsics = data.intrinsics || null;
   window.RepoFusion.pose.tracking = data.tracking || "unknown";
-  
-  // Actualizamos el cuadro verde
-  const debugDiv = document.getElementById("bridgeDebug");
-  if(debugDiv) debugDiv.innerText = `Tracking: ${data.tracking || 'n/a'}`;
 };
 </script>
 <script>
@@ -225,9 +230,8 @@ function createAR(){
 
   const container = document.getElementById("arContainer");
 
-  container.innerHTML = `
+    container.innerHTML = `
     <a-scene
-      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
@@ -235,20 +239,17 @@ function createAR(){
 
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-gltf-model
-          id="aframeModel"
-          src="${models[current]}"
+      <a-entity id="aframeModel"
+          gltf-model="${models[current]}"
           rotation="90 0 0"
           scale="8 8 8">
-        </a-gltf-model>
       </a-entity>
 
     </a-scene>`;
 
   const sceneEl = container.querySelector("a-scene");
 
-  sceneEl.addEventListener("loaded", () => {
+    sceneEl.addEventListener("loaded", () => {
 
     console.log("A-Frame cargado");
     pmremGenerator =
@@ -258,9 +259,9 @@ pmremGenerator.compileEquirectangularShader();
 
 console.log("PMREM listo");
 
-setTimeout(() => {
+    setTimeout(() => {
 
-    const video = document.querySelector("video");
+  const video = document.querySelector("video");
       if (video && window.THREE) {
 
   cameraEnv = new THREE.VideoTexture(video);
@@ -338,8 +339,7 @@ envInterval = setInterval(() => {
     cameraRT.texture;
 
 }
-    const target = document.querySelector("[mindar-image-target]");
-
+  
 }, 50);
       
 }, 200);
@@ -401,6 +401,7 @@ function next(){
 
 function startAR(){
   // --- AÑADIMOS EL ARRANQUE DE 8TH WALL AQUÍ ---
+  document.getElementById("bridgeDebugPanel").style.display = "block";
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
   document.body.appendChild(bundle);
@@ -419,6 +420,7 @@ function startAR(){
 
 function stopAR(){
   destroyAR();
+  document.getElementById("bridgeDebugPanel").style.display = "none";
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning")
   .forEach(el => el.remove());
@@ -474,4 +476,3 @@ function toggleEnv(){
 
 </body>
 </html>
-
