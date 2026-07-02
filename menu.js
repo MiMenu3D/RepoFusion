@@ -1,6 +1,6 @@
 // Menu module v1.3
 // Generated as part of the AR refactor.
-// TimeTravel17
+// version 1.3
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -160,7 +160,7 @@ function stopAR(){
   const bundles = document.querySelectorAll('script[src="bundle.js"]');
   bundles.forEach(s => s.remove());
 
-  window.AR = null; 
+  window["AR"] = { isReady: false }; 
 
   // 5. RECONSTRUCCIÓN DEL MENÚ
   // En lugar de ocultar/mostrar, recreamos el contenedor
