@@ -1,4 +1,4 @@
-const BRIDGE_VERSION = "Bridge v85.0 (Tracking API)";
+const BRIDGE_VERSION = "Bridge v86.0 (Tracking API)";
 
 const panel = document.createElement("div");
 panel.style.position = "fixed";
@@ -86,16 +86,6 @@ function install() {
 
     panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
 }
-
-function waitForXR8() {
-    if (window.XR8) {
-        install();
-    } else {
-        window.addEventListener("xrloaded", install, { once: true });
-    }
-}
-
-waitForXR8();
 
 function render() {
 

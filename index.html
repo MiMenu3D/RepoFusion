@@ -110,7 +110,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 3.1 HDR</div>
+  <div id="prueba">Prueba Fusion 2.1 HDR</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -168,10 +168,6 @@ let cameraEnv = null;
 let envMode = "hdr";
 let pmremGenerator = null;
 let cameraRT = null;
-let envInterval = null;
-let envTexture = null;
-let envCanvas = null;
-let video = null;
 let mv = null;
 
 const models = [
@@ -256,43 +252,42 @@ function createAR(){
     console.log("PMREM listo");
 
     setTimeout(() => {
-      // Esperamos a que 8th Wall inyecte el vídeo en el DOM
-      const waitForVideo = setInterval(() => {
-        const candidate = document.querySelector("video");
-        if (candidate && candidate.readyState >= 2) {
+    // Esperamos a que 8th Wall inyecte el vídeo en el DOM
+    const waitForVideo = setInterval(() => {
+      const video = document.querySelector("video");
+      if (video && video.readyState === 4) { // readyState 4 significa que hay datos
           clearInterval(waitForVideo);
-          video = candidate;
           cameraEnv = new THREE.VideoTexture(video);
           cameraEnv.colorSpace = THREE.SRGBColorSpace;
           console.log("Cámara detectada con éxito");
-
-          envCanvas = document.createElement("canvas");
-          envCanvas.width = 64;
-          envCanvas.height = 64;
-          envTexture = new THREE.CanvasTexture(envCanvas);
-          envTexture.mapping = THREE.EquirectangularReflectionMapping;
-          const ctx = envCanvas.getContext("2d");
-          let smoothed = 120;
-
-          envInterval = setInterval(() => {
-            if (!video || video.readyState < 2) return;
-            ctx.drawImage(video, 0, 0, 64, 64);
-            envTexture.needsUpdate = true;
-            if (pmremGenerator) {
-              if (cameraRT) cameraRT.dispose();
-              cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-              if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
-            }
-            const pixels = ctx.getImageData(0, 0, 64, 64).data;
-            let total = 0;
-            for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-            const brightness = total / (pixels.length / 4);
-            smoothed = smoothed + (brightness - smoothed) * 0.08;
-            const exposure = 0.6 + (smoothed / 255) * 0.9;
-            if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-          }, 50);
+          // Aquí disparas tu lógica de iluminación original (la de envInterval)
+      }
+    }, 500);
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = 64; canvas.height = 64;
+      const envTexture = new THREE.CanvasTexture(canvas);
+      envTexture.mapping = THREE.EquirectangularReflectionMapping;
+      const ctx = canvas.getContext("2d");
+      let smoothed = 120;
+      
+      envInterval = setInterval(() => {
+        if (!video) return;
+        ctx.drawImage(video, 0, 0, 64, 64);
+        envTexture.needsUpdate = true;
+        if (pmremGenerator) {
+          if (cameraRT) cameraRT.dispose();
+          cameraRT = pmremGenerator.fromEquirectangular(envTexture);
+          if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
         }
-      }, 500);
+        const pixels = ctx.getImageData(0, 0, 64, 64).data;
+        let total = 0;
+        for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+        const brightness = total / (pixels.length / 4);
+        smoothed = smoothed + (brightness - smoothed) * 0.08;
+        const exposure = 0.6 + (smoothed / 255) * 0.9;
+        if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
+      }, 50);
     }, 200);
 
     new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
@@ -341,17 +336,12 @@ function startAR(){
   bridge.src = "bridge.js?t=" + Date.now();
   document.body.appendChild(bridge);
 
-  const runXR = () => {
+    // Despertador para el feed de cámara
+  setTimeout(() => {
     if (window.XR8) {
       window.XR8.run({ cameraConfig: { direction: 'BACK' } });
     }
-  };
-
-  if (window.XR8) {
-    runXR();
-  } else {
-    window.addEventListener("xrloaded", runXR, { once: true });
-  }
+  }, 1000);
 
   // ----------------------------------
 
