@@ -1,10 +1,9 @@
-// Menu module v150.5
+// Menu module v1.3
 // Generated as part of the AR refactor.
-// version 150.5
+// version 1.2
 
+// Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
-window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.menu = "150.5";
 window.RepoFusion.pose = {
   camera: null,
   marker: null,
@@ -22,8 +21,6 @@ window.RepoFusion.setPose = function (data) {
 
 let current = 0;
 let mv = null;
-let isARActive = false;
-const menuNodes = { startScreen: null, mvContainer: null };
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
   "Plato_05.glb","Plato_06.glb","Plato_07.glb","Plato_08.glb",
@@ -70,95 +67,6 @@ function updateMV(){
 function destroyMV(){
   document.getElementById("mvContainer").innerHTML = "";
   mv = null;
-}
-
-function getVersionValue(name) {
-  return window.RepoFusionVersions && window.RepoFusionVersions[name]
-    ? window.RepoFusionVersions[name]
-    : "unknown";
-}
-
-function updateVersionList(list) {
-  list.textContent =
-    `index.html: ${getVersionValue("index")}\n` +
-    `menu.js: ${getVersionValue("menu")}\n` +
-    `bridge.js: ${getVersionValue("bridge")}\n` +
-    `ar.js: ${getVersionValue("ar")}\n`;
-}
-
-function createVersionPanel() {
-  if (document.getElementById("versionPanel")) return;
-  const startScreen = document.getElementById("startScreen");
-  if (!startScreen) return;
-  const panel = document.createElement("div");
-  panel.id = "versionPanel";
-  panel.style.position = "absolute";
-  panel.style.top = "10px";
-  panel.style.left = "10px";
-  panel.style.right = "10px";
-  panel.style.zIndex = "100";
-  panel.style.color = "white";
-  panel.style.fontSize = "12px";
-  panel.style.textAlign = "left";
-
-  const button = document.createElement("button");
-  button.id = "versionToggle";
-  button.textContent = "Versiones";
-  button.style.background = "rgba(255,255,255,0.1)";
-  button.style.color = "white";
-  button.style.border = "1px solid white";
-  button.style.borderRadius = "12px";
-  button.style.padding = "6px 10px";
-  button.style.marginBottom = "8px";
-  button.style.width = "auto";
-  button.style.cursor = "pointer";
-
-  const list = document.createElement("div");
-  list.id = "versionList";
-  list.style.display = "none";
-  list.style.background = "rgba(0,0,0,0.7)";
-  list.style.padding = "10px";
-  list.style.borderRadius = "12px";
-  list.style.whiteSpace = "pre-wrap";
-  list.style.textAlign = "left";
-  updateVersionList(list);
-
-  button.addEventListener("click", () => {
-    updateVersionList(list);
-    list.style.display = list.style.display === "none" ? "block" : "none";
-  });
-
-  panel.appendChild(button);
-  panel.appendChild(list);
-  startScreen.insertBefore(panel, startScreen.firstChild);
-}
-
-function detachMenuNodes() {
-  const startScreen = document.getElementById("startScreen");
-  const mvContainer = document.getElementById("mvContainer");
-  if (startScreen) {
-    menuNodes.startScreen = startScreen;
-    startScreen.remove();
-  }
-  if (mvContainer) {
-    menuNodes.mvContainer = mvContainer;
-    mvContainer.remove();
-  }
-}
-
-function restoreMenuNodes() {
-  const arContainer = document.getElementById("arContainer");
-  if (!arContainer) return;
-  if (menuNodes.startScreen && !document.getElementById("startScreen")) {
-    document.body.insertBefore(menuNodes.startScreen, arContainer);
-  }
-  if (menuNodes.mvContainer && !document.getElementById("mvContainer")) {
-    document.body.insertBefore(menuNodes.mvContainer, arContainer);
-  }
-  const versionList = document.getElementById("versionList");
-  if (versionList) {
-    updateVersionList(versionList);
-  }
 }
 
 function prev(){
@@ -215,18 +123,14 @@ function startAR(){
   ensureARModule().then((AR) => {
     history.pushState({mode:"ar", current}, "");
     destroyMV();
-    detachMenuNodes();
+    document.getElementById("mvContainer").style.display = "none";
+    document.getElementById("startScreen").style.display = "none";
     document.getElementById("arContainer").style.display = "block";
     document.body.style.background = "transparent";
     const envToggle = document.getElementById("envToggle");
     if (envToggle) envToggle.style.display = "block";
-    isARActive = true;
     AR.startAR(models[current]).catch((err) => {
       console.warn("AR.startAR failed:", err);
-      isARActive = false;
-      restoreMenuNodes();
-      createMV();
-      history.replaceState({mode:"menu", current}, "");
     });
   }).catch((err) => {
     console.warn("No se pudo cargar el módulo AR:", err);
@@ -234,7 +138,6 @@ function startAR(){
 }
 
 function stopAR(){
-  isARActive = false;
   if (window.AR && typeof window.AR.stopAR === "function") {
     window.AR.stopAR();
   }
@@ -243,33 +146,20 @@ function stopAR(){
   document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
   const bridgePanel = document.getElementById("bridgeDebugPanel");
   if (bridgePanel) bridgePanel.remove();
-  const arContainer = document.getElementById("arContainer");
-  if (arContainer) {
-    arContainer.innerHTML = "";
-    arContainer.style.display = "none";
-  }
-  const xrMedia = Array.from(document.querySelectorAll("video, canvas"));
-  xrMedia.forEach((node) => {
-    if (node.closest("#mvContainer") || node.closest("#versionPanel")) return;
-    try {
-      if (node.tagName === "VIDEO" && node.srcObject) {
-        node.srcObject = null;
-      }
-    } catch (err) {
-      console.warn("error clearing XR media node", err);
-    }
-    node.remove();
-  });
+  document.getElementById("arContainer").style.display = "none";
   const envToggle = document.getElementById("envToggle");
   if (envToggle) envToggle.style.display = "none";
   document.body.style.background = "#1f1a17";
-  restoreMenuNodes();
+  document.getElementById("startScreen").style.display = "flex";
+  document.getElementById("mvContainer").style.display = "block";
   createMV();
   history.replaceState({mode:"menu", current}, "");
 }
 
-window.addEventListener("popstate", () => {
-  stopAR();
+window.addEventListener("popstate", (event) => {
+  if (!event.state || event.state.mode !== "ar") {
+    stopAR();
+  }
 });
 
 window.toggleEnv = function() {
@@ -281,6 +171,5 @@ window.toggleEnv = function() {
 window.addEventListener("DOMContentLoaded", () => {
   history.replaceState({mode:"menu", current}, "");
   document.getElementById("envToggle").style.display = "none";
-  createVersionPanel();
   createMV();
 });
