@@ -5,6 +5,9 @@
 // Este bloque es el mismo que estaba en el aframe.html original para recibir datos del bridge.js
 // =====================================================
 
+window.RepoFusionVersions = window.RepoFusionVersions || {};
+window.RepoFusionVersions.aframe_app = "83.0";
+
 window.RepoFusion = window.RepoFusion || {};
 
 window.RepoFusion.pose = {
