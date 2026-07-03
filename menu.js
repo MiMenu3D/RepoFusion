@@ -1,6 +1,6 @@
 // Menu module v1.3
 // Generated as part of the AR refactor.
-// TimeTravel17
+// version 1.3
 
 // Menu principal y UI general
 window.RepoFusion = window.RepoFusion || {};
@@ -138,42 +138,31 @@ function startAR(){
 }
 
 function stopAR(){
-  // 1. Apagar el motor AR (mantiene tu lógica de ar.js)
   if (window.AR && typeof window.AR.stopAR === "function") {
     window.AR.stopAR();
   }
 
-  // 2. DESTRUCCIÓN TOTAL DEL DOM DE AR
-  const arContainer = document.getElementById("arContainer");
-  if (arContainer) {
-    arContainer.innerHTML = ""; // Elimina todo rastro de A-Frame/Canvas
-    arContainer.style.display = "none";
-  }
-
-  // 3. LIMPIEZA DRÁSTICA DE SCRIPT HUÉRFANO
+  // Limpieza agresiva
   const arScript = document.getElementById("arModuleScript");
-  if (arScript) {
-    arScript.remove(); 
-  }
-  
-  // 4. ELIMINAR EL BUNDLE DE 8TH WALL (la causa probable del bloqueo)
-  const bundles = document.querySelectorAll('script[src="bundle.js"]');
-  bundles.forEach(s => s.remove());
+  if (arScript) arScript.remove(); 
+  window.AR = null; 
 
-  window["AR"] = { isReady: false }; 
-
-  // 5. RECONSTRUCCIÓN DEL MENÚ
-  // En lugar de ocultar/mostrar, recreamos el contenedor
-  document.getElementById("mvContainer").innerHTML = ""; 
-  
   document.getElementById("lightDebug").style.display = "none";
-  document.getElementById("startScreen").style.display = "flex";
-  document.body.style.background = "#1f1a17";
+  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
+  const bridgePanel = document.getElementById("bridgeDebugPanel");
+  if (bridgePanel) bridgePanel.remove();
   
-  // Pequeño retraso para dejar que el hilo de la GPU se libere antes de volver a pintar
+  document.getElementById("arContainer").style.display = "none";
+  const envToggle = document.getElementById("envToggle");
+  if (envToggle) envToggle.style.display = "none";
+  
+  document.body.style.background = "#1f1a17";
+  document.getElementById("mvContainer").style.display = "block";
+  document.getElementById("startScreen").style.display = "flex";
+  
   setTimeout(() => {
       createMV();
-  }, 300);
+  }, 100);
   
   history.replaceState({mode:"menu", current}, "");
 }
