@@ -1,9 +1,9 @@
-// AR module v150.5
+// AR module v150.4
 // Generated as part of the AR refactor.
-// version 150.5
+// version 150.4
 
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.ar = "150.5";
+window.RepoFusionVersions.ar = "150.4";
 
 window.AR = window.AR || {};
 window.AR.isReady = false;

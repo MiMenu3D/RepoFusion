@@ -226,7 +226,7 @@ function startAR(){
       isARActive = false;
       restoreMenuNodes();
       createMV();
-      history.replaceState({mode:"menu", current}, "", window.location.pathname);
+      history.replaceState({mode:"menu", current}, "");
     });
   }).catch((err) => {
     console.warn("No se pudo cargar el módulo AR:", err);
@@ -265,7 +265,7 @@ function stopAR(){
   document.body.style.background = "#1f1a17";
   restoreMenuNodes();
   createMV();
-  history.replaceState({mode:"menu", current}, "", window.location.pathname);
+  history.replaceState({mode:"menu", current}, "");
 }
 
 window.addEventListener("popstate", () => {
@@ -279,7 +279,7 @@ window.toggleEnv = function() {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "", window.location.pathname);
+  history.replaceState({mode:"menu", current}, "");
   document.getElementById("envToggle").style.display = "none";
   createVersionPanel();
   createMV();
