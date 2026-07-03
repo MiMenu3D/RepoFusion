@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
 
@@ -109,7 +110,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 3.2 HDR</div>
+  <div id="prueba">Prueba Fusion 3.1 HDR</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -168,44 +169,10 @@ let envMode = "hdr";
 let pmremGenerator = null;
 let cameraRT = null;
 let envInterval = null;
-let arIntervalId = null;
-let xrLoadPromise = null;
 let envTexture = null;
 let envCanvas = null;
 let video = null;
 let mv = null;
-
-function loadScript({ id, src, async = false, attrs = {} }) {
-  if (document.getElementById(id)) return;
-  const script = document.createElement("script");
-  script.id = id;
-  script.src = src;
-  script.async = async;
-  Object.entries(attrs).forEach(([key, value]) => script.setAttribute(key, value));
-  document.body.appendChild(script);
-}
-
-function loadXR8Assets() {
-  loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
-  loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
-  loadScript({ id: "bundleScript", src: "bundle.js" });
-  loadScript({ id: "bridgeScript", src: "bridge.js?t=" + Date.now() });
-}
-
-function waitForXR8() {
-  if (!xrLoadPromise) {
-    xrLoadPromise = new Promise((resolve) => {
-      const onXRLoaded = () => resolve(window.XR8);
-      if (window.XR8) {
-        resolve(window.XR8);
-      } else {
-        window.addEventListener("xrloaded", onXRLoaded, { once: true });
-        window.addEventListener("XRloaded", onXRLoaded, { once: true });
-      }
-    });
-  }
-  return xrLoadPromise;
-}
 
 const models = [
   "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
@@ -260,8 +227,6 @@ function createAR(){
   const container = document.getElementById("arContainer");
   container.innerHTML = `
     <a-scene
-      xrweb
-      xrconfig="cameraDirection: back; delayRun: true"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
@@ -275,16 +240,14 @@ function createAR(){
   const sceneEl = container.querySelector("a-scene");
   sceneEl.addEventListener("loaded", () => {
     // 1. Vigilante: Mueve el 3D según 8th Wall
-    if (arIntervalId) {
-      clearInterval(arIntervalId);
-    }
-    arIntervalId = setInterval(() => {
-      const root = document.getElementById("trackingRoot");
-      if (!root || !window.RepoFusion || !window.RepoFusion.pose.marker) return;
-      const marker = window.RepoFusion.pose.marker;
-      if (!marker.position || !marker.rotation) return;
-      root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-      root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
+    setInterval(() => {
+        const root = document.getElementById("trackingRoot");
+        if (root && window.RepoFusion.pose.marker) {
+            const p = window.RepoFusion.pose.marker.position;
+            const q = window.RepoFusion.pose.marker.rotation;
+            root.object3D.position.set(p.x, p.y, p.z);
+            root.object3D.quaternion.set(q.x, q.y, q.z, q.w);
+        }
     }, 30);
 
     // 2. Tu código original de iluminación (HDR, etc)
@@ -293,6 +256,7 @@ function createAR(){
     console.log("PMREM listo");
 
     setTimeout(() => {
+      // Esperamos a que 8th Wall inyecte el vídeo en el DOM
       const waitForVideo = setInterval(() => {
         const candidate = document.querySelector("video");
         if (candidate && candidate.readyState >= 2) {
@@ -336,24 +300,14 @@ function createAR(){
       originalEnv = hdr;
       sceneEl.object3D.environment = hdr;
     });
-
-    if (sceneEl.hasLoaded) {
-      sceneEl.emit("runreality");
-    } else {
-      sceneEl.addEventListener("loaded", () => sceneEl.emit("runreality"), { once: true });
-    }
   }, {once:true});
 }
 
 function destroyAR(){
   if (envInterval) {
-    clearInterval(envInterval);
-    envInterval = null;
-  }
-  if (arIntervalId) {
-    clearInterval(arIntervalId);
-    arIntervalId = null;
-  }
+  clearInterval(envInterval);
+  envInterval = null;
+}
   document.getElementById("arContainer").innerHTML = "";
 }
 
@@ -368,38 +322,50 @@ function next(){
 }
 
 function startAR(){
-  loadXR8Assets();
+  // --- CARGA DINÁMICA DE 8TH WALL ---
+  const runtime = document.createElement("script");
+  runtime.src = "./external/runtime/runtime.js";
+  document.body.appendChild(runtime);
+
+  const xr = document.createElement("script");
+  xr.src = "./external/xr/xr.js";
+  xr.setAttribute("async", "true");
+  xr.setAttribute("data-preload-chunks", "face, slam");
+  document.body.appendChild(xr);
+  
+  const bundle = document.createElement("script");
+  bundle.src = "bundle.js";
+  document.body.appendChild(bundle);
+
+  const bridge = document.createElement("script");
+  bridge.src = "bridge.js?t=" + Date.now();
+  document.body.appendChild(bridge);
+
+  const runXR = () => {
+    if (window.XR8) {
+      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
+    }
+  };
+
+  if (window.XR8) {
+    runXR();
+  } else {
+    window.addEventListener("xrloaded", runXR, { once: true });
+  }
+
+  // ----------------------------------
+
   history.pushState({mode:"ar", current}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
-
-  waitForXR8().then(() => {
-    createAR();
-  }).catch((err) => {
-    console.warn("Failed to start AR because XR8 did not initialize:", err);
-  });
+  createAR();
 }
 
 function stopAR(){
   if (window.XR8) {
-      try {
-        window.XR8.pause();
-      } catch (err) {
-        console.warn("XR8.pause failed:", err);
-      }
-      try {
-        window.XR8.stop();
-      } catch (err) {
-        console.warn("XR8.stop failed:", err);
-      }
-      if (window.XR8.clearCameraPipelineModules) {
-        try {
-          window.XR8.clearCameraPipelineModules();
-        } catch (err) {
-          console.warn("XR8.clearCameraPipelineModules failed:", err);
-        }
-      }
+      window.XR8.pause();
+      // Esto elimina el feed de cámara que queda activo
       const video = document.querySelector("video");
       if (video) video.srcObject = null;
   }
@@ -407,8 +373,6 @@ function stopAR(){
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning")
   .forEach(el => el.remove());
-  const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) bridgePanel.remove();
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
   createMV();
