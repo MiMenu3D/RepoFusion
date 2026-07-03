@@ -1,10 +1,9 @@
-// Menu module v150.5
-// Generated as part of the AR refactor.
-// version 150.5
+// Menu module v151.0
+// version 151.0
 
 window.RepoFusion = window.RepoFusion || {};
 window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.menu = "150.5";
+window.RepoFusionVersions.menu = "151.0";
 window.RepoFusion.pose = {
   camera: null,
   marker: null,
@@ -83,7 +82,9 @@ function updateVersionList(list) {
     `index.html: ${getVersionValue("index")}\n` +
     `menu.js: ${getVersionValue("menu")}\n` +
     `bridge.js: ${getVersionValue("bridge")}\n` +
-    `ar.js: ${getVersionValue("ar")}\n`;
+    `ar.js: ${getVersionValue("ar")}\n` +
+    `aframe_app: ${getVersionValue("aframe_app")}\n` +
+    `xr_config: ${getVersionValue("xr_config")}\n`;
 }
 
 function createVersionPanel() {
@@ -124,7 +125,10 @@ function createVersionPanel() {
   updateVersionList(list);
 
   button.addEventListener("click", () => {
-    updateVersionList(list);
+    // Delay para permitir que scripts cargados dinámicamente (bridge.js, ar.js) se registren
+    setTimeout(() => {
+      updateVersionList(list);
+    }, 500);
     list.style.display = list.style.display === "none" ? "block" : "none";
   });
 
