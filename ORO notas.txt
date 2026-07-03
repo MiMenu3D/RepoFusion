@@ -1,0 +1,11 @@
+- AR 8th Wall aún, pero con el mejor tracking de la historia
+- Ver AR funciona sólo la primera vez.
+- Segundo intento: pantallazo del 3D sobre negro como estaba al final del primer intento.
+- Cámara, debug, etc. tardan demasiado en abrirse, pero luego funciona perfecto.
+
+La v164x es básicamente lo mismo, no estoy seguro de que haya mejorado algo.
+
+____
+Ahora hay que encontrar los archivos secundarios que iban con eso, jajaja.
+
+Todos los archivos secundarios, todos menos el index, son del Oro 03 del 25 de Junio.
