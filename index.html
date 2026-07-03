@@ -1,12 +1,13 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
-<!-- version 164.0 - Reuse XR8, display:none menus (not innerHTML), scripts in series -->
+<!-- version 3.4 -->
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
@@ -69,7 +70,6 @@ model-viewer {
   background: rgba(255,255,255,0.9);
   border-radius: 12px;
   border: none;
-  cursor: pointer;
 }
 
 .button {
@@ -79,7 +79,6 @@ model-viewer {
   border-radius: 30px;
   font-size: 16px;
   border: none;
-  cursor: pointer;
 }
 
 #arContainer {
@@ -95,62 +94,17 @@ a-scene, a-scene canvas, #arContainer video {
 }
 
 a-scene { width:100%; height:100%; }
-.mindar-ui-scanning { z-index:99998 !important; }
-
-#lightDebug {
+.mindar-ui-scanning { z-index:51 !important; }
+  #lightDebug {
   position: fixed;
   top: 20px;
   left: 20px;
   z-index: 9999;
   color: white;
-  font-size: 12px;
+  font-size: 22px;
   text-shadow: 0 0 10px black;
   pointer-events: none;
   display: none;
-  font-family: monospace;
-  background: rgba(0,0,0,0.7);
-  padding: 8px;
-  border-radius: 4px;
-  max-width: 300px;
-}
-
-#envToggle {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 99999;
-  padding: 12px 16px;
-  border-radius: 12px;
-  border: none;
-  background: white;
-  color: black;
-  font-size: 14px;
-  cursor: pointer;
-  display: none;
-}
-
-#versionPanel {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 99998;
-  background: rgba(0,0,0,0.85);
-  color: #00ff00;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-family: monospace;
-  max-height: 200px;
-  overflow-y: auto;
-  cursor: pointer;
-  user-select: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-#versionPanel.collapsed {
-  max-height: 20px;
-  overflow: hidden;
 }
 </style>
 </head>
@@ -160,7 +114,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 164.0</div>
+  <div id="prueba">Prueba Fusion 3.4 HDR</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -171,454 +125,15 @@ a-scene { width:100%; height:100%; }
   <button class="button" onclick="startAR()">Ver en tu mesa</button>
 </div>
 
-<div id="arContainer"></div>
 
-<button id="envToggle" onclick="toggleEnv()">Env: HDR</button>
+<div id="arContainer"></div>
+  <button id="envToggle" onclick="toggleEnv()" style="display:none; position: fixed; bottom: 20px; right: 20px; z-index: 99999; padding: 12px 16px; border-radius: 12px; border: none; background: white; color: black; font-size: 14px;">
+Env: HDR
+</button>
 
 <div id="lightDebug">LIGHT --</div>
 
-<div id="versionPanel">VERSION v164.0
-v163 scripts + v161 UI strategy</div>
-
-<script>
-// =====================================================
-// VERSION TRACKING
-// =====================================================
-window.RepoFusionVersions = window.RepoFusionVersions || {};
-window.RepoFusionVersions.index = "164.0";
-
-// =====================================================
-// RepoFusion bridge listener
-// =====================================================
-window.RepoFusion = window.RepoFusion || {};
-window.RepoFusion.pose = {
-  camera: null,
-  marker: null,
-  intrinsics: null,
-  tracking: "waiting"
-};
-
-window.RepoFusion.setPose = function (data) {
-  if (!data) return;
-  window.RepoFusion.pose.camera = data.camera || null;
-  window.RepoFusion.pose.marker = data.marker || null;
-  window.RepoFusion.pose.intrinsics = data.intrinsics || null;
-  window.RepoFusion.pose.tracking = data.tracking || "unknown";
-};
-
-// =====================================================
-// APPLICATION STATE
-// =====================================================
-let current = 0;
-let envEnabled = true;
-let originalEnv = null;
-let cameraEnv = null;
-let envMode = "hdr";
-let pmremGenerator = null;
-let cameraRT = null;
-let envInterval = null;
-let arIntervalId = null;
-let xrLoadPromise = null;
-let envTexture = null;
-let envCanvas = null;
-let video = null;
-let mv = null;
-
-const models = [
-  "Plato_01.glb","Plato_02.glb","Plato_03.glb","Plato_04.glb",
-  "Plato_05.glb","Plato_06.glb","Plato_07.glb","Plato_08.glb",
-  "Plato_09.glb","Plato_10.glb","Plato_11.glb","Plato_12.glb",
-  "Plato_13.glb","Plato_14.glb","Plato_15.glb"
-];
-
-// =====================================================
-// UTILITY FUNCTIONS
-// =====================================================
-
-function loadScript({ id, src, async = false, attrs = {} }) {
-  if (document.getElementById(id)) return;
-  const script = document.createElement("script");
-  script.id = id;
-  script.src = src;
-  if (async) script.async = true;
-  Object.entries(attrs).forEach(([key, value]) => script.setAttribute(key, value));
-  document.body.appendChild(script);
-}
-
-function loadXR8Assets() {
-  loadScript({ id: "runtimeScript", src: "./external/runtime/runtime.js" });
-  loadScript({ id: "xrScript", src: "./external/xr/xr.js", async: true, attrs: { "data-preload-chunks": "face, slam" } });
-  loadScript({ id: "bundleScript", src: "bundle.js" });
-  loadScript({ id: "bridgeScript", src: "bridge.js?t=" + Date.now() });
-}
-
-function waitForXR8() {
-  if (!xrLoadPromise) {
-    xrLoadPromise = new Promise((resolve) => {
-      const onXRLoaded = () => resolve(window.XR8);
-      if (window.XR8) {
-        resolve(window.XR8);
-      } else {
-        window.addEventListener("xrloaded", onXRLoaded, { once: true });
-        window.addEventListener("XRloaded", onXRLoaded, { once: true });
-      }
-    });
-  }
-  return xrLoadPromise;
-}
-
-// =====================================================
-// MODEL VIEWER FUNCTIONS
-// =====================================================
-
-function createMV(){
-  const container = document.getElementById("mvContainer");
-  container.innerHTML = `
-    <model-viewer
-      id="mv"
-      src="${models[current]}"
-      autoplay
-      auto-rotate
-      auto-rotate-delay="0"
-      rotation-per-second="17deg"
-      camera-orbit="0deg 70deg 45%"
-      min-camera-orbit="0deg 0deg 45%"
-      max-camera-orbit="360deg 90deg 45%"
-      camera-controls="false"
-      touch-action="none"
-      disable-pan
-      disable-zoom
-      interaction-prompt="none"
-      shadow-intensity="0.4"
-      exposure="0.80"
-      style="background-color:#1f1a17;">
-    </model-viewer>`;
-
-  mv = document.getElementById("mv");
-  mv.addEventListener("load", () => mv.style.opacity = "1", {once:true});
-  document.getElementById("label").innerText = "Plato " + (current + 1);
-}
-
-function updateMV(){
-  if (!mv) return;
-  mv.style.opacity = "0";
-  mv.setAttribute("src", models[current]);
-  mv.addEventListener("load", () => mv.style.opacity = "1", {once:true});
-  document.getElementById("label").innerText = "Plato " + (current + 1);
-}
-
-function destroyMV(){
-  document.getElementById("mvContainer").innerHTML = "";
-  mv = null;
-}
-
-function prev(){
-  current = (current - 1 + models.length) % models.length;
-  updateMV();
-}
-
-function next(){
-  current = (current + 1) % models.length;
-  updateMV();
-}
-
-// =====================================================
-// AR SCENE FUNCTIONS
-// =====================================================
-
-function createARScene(){
-  const container = document.getElementById("arContainer");
-  container.innerHTML = `
-    <a-scene
-      renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
-      color-space="sRGB"
-      vr-mode-ui="enabled:false"
-      device-orientation-permission-ui="enabled:false">
-      <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-      <a-entity id="trackingRoot">
-        <a-gltf-model id="aframeModel" src="${models[current]}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
-      </a-entity>
-    </a-scene>`;
-
-  const sceneEl = container.querySelector("a-scene");
-  sceneEl.addEventListener("loaded", () => {
-    // 1. Tracking update loop - ALWAYS render, update when data available
-    if (arIntervalId) clearInterval(arIntervalId);
-    arIntervalId = setInterval(() => {
-      const root = document.getElementById("trackingRoot");
-      if (!root) return;
-      
-      // Update position if marker data exists, otherwise keep last known position
-      if (window.RepoFusion && window.RepoFusion.pose.marker) {
-        const marker = window.RepoFusion.pose.marker;
-        if (marker.position && marker.rotation) {
-          root.object3D.position.set(marker.position.x, marker.position.y, marker.position.z);
-          root.object3D.quaternion.set(marker.rotation.x, marker.rotation.y, marker.rotation.z, marker.rotation.w);
-        }
-      }
-      // If no marker, model stays visible at last position (simulates SLAM)
-    }, 30);
-
-    // 2. PMREM setup for HDR
-    pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    console.log("[AR] PMREM initialized");
-
-    // Try to find video element (8th Wall creates it), but don't block rendering
-    const waitForVideo = setInterval(() => {
-      const candidate = document.querySelector("video");
-      if (candidate && candidate.readyState >= 2 && !video) {
-        console.log("[AR] Video element found");
-        video = candidate;
-        cameraEnv = new THREE.VideoTexture(video);
-        cameraEnv.colorSpace = THREE.SRGBColorSpace;
-
-        envCanvas = document.createElement("canvas");
-        envCanvas.width = 64;
-        envCanvas.height = 64;
-        envTexture = new THREE.CanvasTexture(envCanvas);
-        envTexture.mapping = THREE.EquirectangularReflectionMapping;
-        const ctx = envCanvas.getContext("2d");
-        let smoothed = 120;
-
-        envInterval = setInterval(() => {
-          if (!video || video.readyState < 2) return;
-          ctx.drawImage(video, 0, 0, 64, 64);
-          envTexture.needsUpdate = true;
-          if (pmremGenerator) {
-            if (cameraRT) cameraRT.dispose();
-            cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-            if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
-          }
-          const pixels = ctx.getImageData(0, 0, 64, 64).data;
-          let total = 0;
-          for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-          const brightness = total / (pixels.length / 4);
-          smoothed = smoothed + (brightness - smoothed) * 0.08;
-          const exposure = 0.6 + (smoothed / 255) * 0.9;
-          if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-        }, 50);
-
-        clearInterval(waitForVideo);
-      }
-    }, 100);
-
-    // 3. Load HDR fallback
-    new THREE.RGBELoader().load("HDR/cinema_lobby_B-N.hdr", (hdr) => {
-      hdr.mapping = THREE.EquirectangularReflectionMapping;
-      originalEnv = hdr;
-      sceneEl.object3D.environment = hdr;
-    });
-  }, {once:true});
-}
-
-function destroyARScene(){
-  if (envInterval) {
-    clearInterval(envInterval);
-    envInterval = null;
-  }
-  if (arIntervalId) {
-    clearInterval(arIntervalId);
-    arIntervalId = null;
-  }
-  document.getElementById("arContainer").innerHTML = "";
-}
-
-// =====================================================
-// AR LIFECYCLE
-// =====================================================
-
-function startAR(){
-  console.log("[AR] startAR called");
-  
-  // --- HIDE MENU UI (don't destroy innerHTML) ---
-  history.pushState({mode:"ar", current}, "");
-  destroyMV();
-  document.getElementById("mvContainer").style.display = "none";
-  document.getElementById("startScreen").style.display = "none";
-  
-  // --- SETUP AR UI ---
-  document.getElementById("arContainer").style.display = "block";
-  document.getElementById("envToggle").style.display = "block";
-  document.getElementById("lightDebug").style.display = "block";
-
-  // --- LOAD 8TH WALL SCRIPTS IN SERIES (only if not already loaded) ---
-  const runXR = () => {
-    console.log("[AR] XR8 ready");
-    if (window.XR8) {
-      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-      console.log("[AR] XR8.run() called - waiting for video...");
-      setTimeout(() => {
-        console.log("[AR] Creating A-Frame scene...");
-        createARScene();
-      }, 800);
-    }
-  };
-
-  // If XR8 already loaded, just run it
-  if (window.XR8) {
-    console.log("[AR] XR8 already loaded, reusing...");
-    runXR();
-    return;
-  }
-
-  // First attempt - load scripts in series
-  const t = Date.now();
-  
-  function loadNextScript(index) {
-    const scripts = [
-      { id: "runtimeScript-" + t, src: "./external/runtime/runtime.js?t=" + t },
-      { id: "xrScript-" + t, src: "./external/xr/xr.js?t=" + t, async: false },
-      { id: "bundleScript-" + t, src: "bundle.js?t=" + t },
-      { id: "bridgeScript-" + t, src: "bridge.js?t=" + t }
-    ];
-    
-    if (index >= scripts.length) {
-      console.log("[AR] All scripts loaded, waiting for XR8...");
-      window.addEventListener("xrloaded", runXR, { once: true });
-      return;
-    }
-    
-    const scriptInfo = scripts[index];
-    const script = document.createElement("script");
-    script.id = scriptInfo.id;
-    script.src = scriptInfo.src;
-    if (scriptInfo.async === false) script.async = false;
-    if (scriptInfo.id.includes("xrScript")) {
-      script.setAttribute("data-preload-chunks", "face, slam");
-    }
-    
-    script.onload = () => {
-      console.log("[AR] Script loaded: " + scriptInfo.id);
-      setTimeout(() => loadNextScript(index + 1), 100); // Small delay between scripts
-    };
-    script.onerror = () => {
-      console.error("[AR] Failed to load: " + scriptInfo.id);
-    };
-    
-    document.body.appendChild(script);
-  }
-  
-  loadNextScript(0);
-}
-
-function stopAR(){
-  console.log("[AR] stopAR called");
-  
-  // Clean XR8 tracking completely
-  if (window.XR8) {
-    try {
-      console.log("[AR] Stopping XR8...");
-      if (window.XR8.pause) window.XR8.pause();
-      if (window.XR8.stop) window.XR8.stop();
-      if (window.XR8.clearCameraPipelineModules) window.XR8.clearCameraPipelineModules();
-    } catch (err) {
-      console.warn("[AR] XR8 cleanup error:", err);
-    }
-    
-    // Don't reset window.XR8 to null - keep it for reuse in next attempt
-  }
-
-  // Clean video element and stream
-  const videoEl = document.querySelector("video");
-  if (videoEl) {
-    if (videoEl.srcObject) {
-      videoEl.srcObject.getTracks().forEach(t => t.stop());
-      videoEl.srcObject = null;
-    }
-    videoEl.pause();
-    console.log("[AR] Video cleaned");
-  }
-
-  console.log("[AR] Destroying AR scene...");
-  destroyARScene();
-  
-  // Hide AR UI
-  document.getElementById("lightDebug").style.display = "none";
-  document.getElementById("envToggle").style.display = "none";
-  
-  // Clean all dynamically created elements
-  document.querySelectorAll(".mindar-ui-scanning").forEach(el => el.remove());
-  const bridgePanel = document.getElementById("bridgeDebugPanel");
-  if (bridgePanel) bridgePanel.remove();
-  
-  // Don't remove scripts - keep them in memory for reuse
-  
-  // Show menu - RESTORE (don't recreate)
-  document.getElementById("arContainer").style.display = "none";
-  document.getElementById("mvContainer").style.display = "block";
-  document.getElementById("startScreen").style.display = "flex";
-  
-  console.log("[AR] Recreating model viewer...");
-  createMV();
-  
-  console.log("[AR] stopAR complete");
-}
-
-window.addEventListener("popstate", () => stopAR());
-
-// =====================================================
-// ENVIRONMENT TOGGLE
-// =====================================================
-
-function toggleEnv(){
-  const scene = document.querySelector("a-scene");
-  const btn = document.getElementById("envToggle");
-  if (!scene) return;
-
-  if (envMode === "hdr") {
-    if (cameraRT) scene.object3D.environment = cameraRT.texture;
-    envMode = "cam";
-    btn.innerText = "Env: CAM";
-  } else if (envMode === "cam") {
-    scene.object3D.environment = null;
-    envMode = "off";
-    btn.innerText = "Env: OFF";
-  } else {
-    scene.object3D.environment = originalEnv;
-    envMode = "hdr";
-    btn.innerText = "Env: HDR";
-  }
-}
-
-// =====================================================
-// VERSION PANEL
-// =====================================================
-
-function updateVersionPanel(){
-  const panel = document.getElementById("versionPanel");
-  let versionText = "VERSION v164.0\n";
-  versionText += "================\n";
-  if (window.RepoFusionVersions) {
-    for (const [file, version] of Object.entries(window.RepoFusionVersions)) {
-      versionText += `${file}: ${version}\n`;
-    }
-  }
-  panel.textContent = versionText;
-}
-
-document.getElementById("versionPanel").addEventListener("click", function() {
-  this.classList.toggle("collapsed");
-});
-
-// =====================================================
-// INITIALIZATION
-// =====================================================
-
-window.addEventListener("DOMContentLoaded", () => {
-  history.replaceState({mode:"menu", current}, "");
-  document.getElementById("envToggle").style.display = "none";
-  createMV();
-  updateVersionPanel();
-  
-  // Monitor for version updates from bridge.js
-  setInterval(() => {
-    if (window.RepoFusionVersions && window.RepoFusionVersions.bridge) {
-      updateVersionPanel();
-    }
-  }, 1000);
-});
-</script>
-
+<script src="menu.js"></script>
 </body>
 </html>
+
