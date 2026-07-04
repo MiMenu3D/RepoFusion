@@ -1,6 +1,8 @@
-const BRIDGE_VERSION = "Bridge v85.0 (Tracking API)";
+const BRIDGE_VERSION = "Bridge Handmade Unified v1.5";
+// version 87.3 Handmade Unified v1.5
 
 const panel = document.createElement("div");
+panel.id = "bridgeDebugPanel";
 panel.style.position = "fixed";
 panel.style.top = "10px";
 panel.style.left = "10px";
@@ -13,6 +15,15 @@ panel.style.whiteSpace = "pre";
 panel.style.zIndex = "999999";
 panel.style.maxHeight = "85vh";
 panel.style.overflow = "auto";
+panel.style.cursor = "pointer";
+
+let isMinimized = false;
+panel.onclick = (e) => {
+  e.stopPropagation();
+  isMinimized = !isMinimized;
+  panel.style.height = isMinimized ? "20px" : "auto";
+  panel.style.overflow = isMinimized ? "hidden" : "auto";
+};
 
 document.body.appendChild(panel);
 
@@ -69,12 +80,33 @@ function install() {
             window.Tracking.marker = normalizeMarker(reality);
             window.Tracking.intrinsics = reality.intrinsics || null;
             window.Tracking.tracking = reality.trackingStatus || "unknown";
+
+            // --- ESTO ES LO ÚNICO QUE AÑADIMOS ---
+            if (window.RepoFusion && window.RepoFusion.setPose) {
+                window.RepoFusion.setPose({
+                    camera: window.Tracking.camera,
+                    marker: window.Tracking.marker,
+                    intrinsics: window.Tracking.intrinsics,
+                    tracking: window.Tracking.tracking
+                });
+            }
+            // -------------------------------------
         }
 
     });
 
     panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
 }
+
+function waitForXR8() {
+    if (window.XR8) {
+        install();
+    } else {
+        window.addEventListener("xrloaded", install, { once: true });
+    }
+}
+
+waitForXR8();
 
 function render() {
 
