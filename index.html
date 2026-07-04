@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<!-- Motores de 8th Wall (necesarios para el tracking) -->
+<script crossorigin="anonymous" src="./external/runtime/runtime.js"></script>
+<script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>A-Frame AR - Pruebas HDR</title>
@@ -110,7 +113,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 2.1 HDR</div>
+  <div id="prueba">Prueba Fusion 1.0 HDR</div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -220,81 +223,200 @@ function destroyMV(){
 }
 
 function createAR(){
+
   const container = document.getElementById("arContainer");
+
   container.innerHTML = `
     <a-scene
+      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
       device-orientation-permission-ui="enabled:false">
+
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
-      <a-entity id="trackingRoot">
-        <a-gltf-model id="aframeModel" src="${models[current]}" rotation="90 0 0" scale="8 8 8"></a-gltf-model>
+
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-gltf-model
+          id="aframeModel"
+          src="${models[current]}"
+          rotation="90 0 0"
+          scale="8 8 8">
+        </a-gltf-model>
       </a-entity>
+
     </a-scene>`;
 
   const sceneEl = container.querySelector("a-scene");
+
   sceneEl.addEventListener("loaded", () => {
-    // 1. Vigilante: Mueve el 3D según 8th Wall
-    setInterval(() => {
-        const root = document.getElementById("trackingRoot");
-        if (root && window.RepoFusion.pose.marker) {
-            const p = window.RepoFusion.pose.marker.position;
-            const q = window.RepoFusion.pose.marker.rotation;
-            root.object3D.position.set(p.x, p.y, p.z);
-            root.object3D.quaternion.set(q.x, q.y, q.z, q.w);
-        }
-    }, 30);
 
-    // 2. Tu código original de iluminación (HDR, etc)
-    pmremGenerator = new THREE.PMREMGenerator(sceneEl.renderer);
-    pmremGenerator.compileEquirectangularShader();
-    console.log("PMREM listo");
+    console.log("A-Frame cargado");
+    pmremGenerator =
+  new THREE.PMREMGenerator(sceneEl.renderer);
 
+pmremGenerator.compileEquirectangularShader();
+
+console.log("PMREM listo");
+    const prueba = document.getElementById("lightDebug");
+
+setTimeout(() => {
+
+  if (sceneEl.renderer) {
+    prueba.style.display = "block";
+    prueba.innerText = "RENDERER OK";
+  } else {
+    prueba.style.display = "block";
+    prueba.innerText = "NO RENDERER";
+  }
+
+}, 1000);
     setTimeout(() => {
-    // Esperamos a que 8th Wall inyecte el vídeo en el DOM
-    const waitForVideo = setInterval(() => {
-      const video = document.querySelector("video");
-      if (video && video.readyState === 4) { // readyState 4 significa que hay datos
-          clearInterval(waitForVideo);
-          cameraEnv = new THREE.VideoTexture(video);
-          cameraEnv.colorSpace = THREE.SRGBColorSpace;
-          console.log("Cámara detectada con éxito");
-          // Aquí disparas tu lógica de iluminación original (la de envInterval)
-      }
-    }, 500);
-      
-      const canvas = document.createElement("canvas");
-      canvas.width = 64; canvas.height = 64;
-      const envTexture = new THREE.CanvasTexture(canvas);
-      envTexture.mapping = THREE.EquirectangularReflectionMapping;
-      const ctx = canvas.getContext("2d");
-      let smoothed = 120;
-      
-      envInterval = setInterval(() => {
-        if (!video) return;
-        ctx.drawImage(video, 0, 0, 64, 64);
-        envTexture.needsUpdate = true;
-        if (pmremGenerator) {
-          if (cameraRT) cameraRT.dispose();
-          cameraRT = pmremGenerator.fromEquirectangular(envTexture);
-          if (envMode === "cam") sceneEl.object3D.environment = cameraRT.texture;
-        }
-        const pixels = ctx.getImageData(0, 0, 64, 64).data;
-        let total = 0;
-        for (let i = 0; i < pixels.length; i += 4) total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
-        const brightness = total / (pixels.length / 4);
-        smoothed = smoothed + (brightness - smoothed) * 0.08;
-        const exposure = 0.6 + (smoothed / 255) * 0.9;
-        if (sceneEl.renderer) sceneEl.renderer.exposure = exposure;
-      }, 50);
-    }, 200);
 
-    new THREE.RGBELoader().load("cinema_lobby_B-N.hdr", (hdr) => {
-      hdr.mapping = THREE.EquirectangularReflectionMapping;
-      originalEnv = hdr;
-      sceneEl.object3D.environment = hdr;
+  const video = document.querySelector("video");
+      if (video && window.THREE) {
+
+  cameraEnv = new THREE.VideoTexture(video);
+
+  cameraEnv.colorSpace = THREE.SRGBColorSpace;
+
+  console.log("Camera texture lista");
+
+}
+  const prueba = document.getElementById("lightDebug");
+prueba.style.display = "block";
+
+  if (!video) {
+    prueba.innerText = "NO VIDEO";
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const envTexture =
+  new THREE.CanvasTexture(canvas);
+
+envTexture.mapping =
+  THREE.EquirectangularReflectionMapping;
+
+  const ctx = canvas.getContext("2d");
+
+  let smoothed = 120; // estabilidad inicial
+const alpha = 0.08; // suavizado
+
+envInterval = setInterval(() => {
+
+  ctx.drawImage(video, 0, 0, 64, 64);
+  envTexture.needsUpdate = true;
+  if (pmremGenerator) {
+
+  if (cameraRT) {
+    cameraRT.dispose();
+  }
+
+  cameraRT =
+    pmremGenerator.fromEquirectangular(envTexture);
+    envTexture.needsUpdate = true;
+    if (envMode === "cam") {
+
+  sceneEl.object3D.environment =
+    cameraRT.texture;
+
+}
+
+}
+
+  const pixels = ctx.getImageData(0, 0, 64, 64).data;
+
+  let total = 0;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    total += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+  }
+
+  const brightness = total / (pixels.length / 4);
+
+  // suavizado (clave)
+  smoothed = smoothed + (brightness - smoothed) * alpha;
+
+  // mapping a exposure usable
+  const exposure = 0.6 + (smoothed / 255) * 0.9;
+
+  const scene = document.querySelector("a-scene");
+
+  if (scene && scene.renderer) {
+    scene.renderer.exposure = exposure;
+  }
+  if (envMode === "cam" && cameraRT) {
+
+  scene.object3D.environment =
+    cameraRT.texture;
+
+}
+  const target = document.querySelector("[mindar-image-target]");
+
+if (target) {
+
+  const p = target.object3D.position;
+const q = target.object3D.quaternion;
+const s = target.object3D.scale;
+
+  target.object3D.matrixWorld.decompose(p, q, s);
+  
+  prueba.innerText =
+`LIGHT ${Math.round(smoothed)} | EXP ${exposure.toFixed(2)}
+
+PX ${p.x.toFixed(5)}
+PY ${p.y.toFixed(5)}
+PZ ${p.z.toFixed(5)}
+
+SX ${s.x.toFixed(5)}
+
+QX ${q.x.toFixed(5)}
+QY ${q.y.toFixed(5)}
+QZ ${q.z.toFixed(5)}
+QW ${q.w.toFixed(5)}`;
+}
+  
+}, 50);
+      
+}, 200);
+    if (!window.THREE || !THREE.RGBELoader) {
+      console.error("RGBELoader no disponible");
+      return;
+    }
+
+    const loader = new THREE.RGBELoader();
+
+    loader.load("cinema_lobby_B-N.hdr", function(hdrTexture){
+
+      console.log("HDR cargado");
+
+      hdrTexture.mapping = THREE.EquirectangularReflectionMapping;
+
+originalEnv = hdrTexture; // guardamos referencia
+
+sceneEl.object3D.environment = hdrTexture;
+
+      const model = document.getElementById("aframeModel");
+
+      model.addEventListener("model-loaded", () => {
+
+        model.object3D.traverse((obj) => {
+          if (!obj.isMesh || !obj.material) return;
+          obj.material.envMapIntensity = 0.9;
+          obj.material.needsUpdate = true;
+        });
+
+        console.log("HDR aplicado");
+
+      }, {once:true});
+
+    }, undefined, function(err){
+      console.error("Error HDR:", err);
     });
+
   }, {once:true});
 }
 
@@ -317,17 +439,7 @@ function next(){
 }
 
 function startAR(){
-  // --- CARGA DINÁMICA DE 8TH WALL ---
-  const runtime = document.createElement("script");
-  runtime.src = "./external/runtime/runtime.js";
-  document.body.appendChild(runtime);
-
-  const xr = document.createElement("script");
-  xr.src = "./external/xr/xr.js";
-  xr.setAttribute("async", "true");
-  xr.setAttribute("data-preload-chunks", "face, slam");
-  document.body.appendChild(xr);
-  
+  // --- AÑADIMOS EL ARRANQUE DE 8TH WALL AQUÍ ---
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
   document.body.appendChild(bundle);
@@ -335,15 +447,7 @@ function startAR(){
   const bridge = document.createElement("script");
   bridge.src = "bridge.js?t=" + Date.now();
   document.body.appendChild(bridge);
-
-    // Despertador para el feed de cámara
-  setTimeout(() => {
-    if (window.XR8) {
-      window.XR8.run({ cameraConfig: { direction: 'BACK' } });
-    }
-  }, 1000);
-
-  // ----------------------------------
+  // ---------------------------------------------
 
   history.pushState({mode:"ar", current}, "");
   destroyMV();
@@ -353,12 +457,6 @@ function startAR(){
 }
 
 function stopAR(){
-  if (window.XR8) {
-      window.XR8.pause();
-      // Esto elimina el feed de cámara que queda activo
-      const video = document.querySelector("video");
-      if (video) video.srcObject = null;
-  }
   destroyAR();
   document.getElementById("lightDebug").style.display = "none";
   document.querySelectorAll(".mindar-ui-scanning")

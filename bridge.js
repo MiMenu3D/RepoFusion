@@ -1,4 +1,4 @@
-const BRIDGE_VERSION = "Bridge v86.0 (Tracking API)";
+const BRIDGE_VERSION = "Bridge v85.0 (Tracking API)";
 
 const panel = document.createElement("div");
 panel.style.position = "fixed";
@@ -69,17 +69,6 @@ function install() {
             window.Tracking.marker = normalizeMarker(reality);
             window.Tracking.intrinsics = reality.intrinsics || null;
             window.Tracking.tracking = reality.trackingStatus || "unknown";
-
-            // --- ESTO ES LO ÚNICO QUE AÑADIMOS ---
-            if (window.RepoFusion && window.RepoFusion.setPose) {
-                window.RepoFusion.setPose({
-                    camera: window.Tracking.camera,
-                    marker: window.Tracking.marker,
-                    intrinsics: window.Tracking.intrinsics,
-                    tracking: window.Tracking.tracking
-                });
-            }
-            // -------------------------------------
         }
 
     });
