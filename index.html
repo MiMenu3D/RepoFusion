@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -7,10 +7,9 @@
 <script crossorigin="anonymous" src="./external/xr/xr.js" async="true" data-preload-chunks="face, slam"></script>
 <script src="bundle.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>A-Frame AR - Pruebas HDR</title>
+<title>A-Frame AR - Version Unified 1.08 </title>
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 <script src="https://unpkg.com/three@0.139.2/examples/js/loaders/RGBELoader.js"></script>
 <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
 
@@ -113,7 +112,7 @@ a-scene { width:100%; height:100%; }
 <div id="mvContainer"></div>
 
 <div id="startScreen">
-  <div id="prueba">Prueba Fusion 1.0 HDR</div>
+  <div id="prueba"> Version Unified 1.08 </div>
   <div id="label">Plato 01</div>
 
   <div class="arrowContainer">
@@ -126,43 +125,96 @@ a-scene { width:100%; height:100%; }
 
 <div id="arContainer"></div>
   <button id="envToggle" onclick="toggleEnv()"
-style="
-position: fixed;
-bottom: 20px;
-right: 20px;
-z-index: 99999;
-padding: 12px 16px;
-border-radius: 12px;
-border: none;
-background: white;
-color: black;
-font-size: 14px;
-">
-Env: HDR
-</button>
+  style="
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99999;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: none;
+  background: white;
+  color: black;
+  font-size: 14px;
+  display: none;
+  ">
+  Env: HDR
+  </button>
 
 <div id="lightDebug">LIGHT --</div>
 
+<div id="bridgeDebugPanel" 
+     onclick="this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px')"
+     style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.85); color: lime; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre; z-index: 999999; max-height: 20px; overflow: hidden; cursor: pointer; display: none;">
+  Bridge Info: Esperando...
+</div>
+
 <script>
-// RepoFusion bridge listener v1.0
+// ===================================================================
+// BRIDGE DEBUG (Incorporado de Success 04)
+// ===================================================================
+const BRIDGE_VERSION = "Bridge v87.3 (Tracking API)";
+
+const panel = document.createElement("div");
+panel.id = "bridgeDebugPanel";
+panel.style.position = "fixed";
+panel.style.top = "10px";
+panel.style.left = "10px";
+panel.style.background = "rgba(0,0,0,0.85)";
+panel.style.color = "lime";
+panel.style.padding = "10px";
+panel.style.fontFamily = "monospace";
+panel.style.fontSize = "12px";
+panel.style.whiteSpace = "pre";
+panel.style.zIndex = "999999";
+panel.style.maxHeight = "20px";
+panel.style.overflow = "hidden";
+panel.style.cursor = "pointer";
+panel.onclick = function() {
+  this.style.maxHeight = (this.style.maxHeight === '20px' ? '85vh' : '20px');
+};
+document.body.appendChild(panel);
+
 window.RepoFusion = window.RepoFusion || {};
+window.RepoFusion.pose = { camera: null, marker: null, intrinsics: null, tracking: "waiting" };
 
-window.RepoFusion.pose = {
-  camera: null,
-  marker: null,
-  intrinsics: null,
-  tracking: "waiting"
-};
+function installBridge() {
+    if (!window.XR8) {
+        panel.textContent = BRIDGE_VERSION + "\nXR8 not found (Retrying...)";
+        return;
+    }
 
-window.RepoFusion.setPose = function (data) {
-  if (!data) return;
-  window.RepoFusion.pose.camera = data.camera || null;
-  window.RepoFusion.pose.marker = data.marker || null;
-  window.RepoFusion.pose.intrinsics = data.intrinsics || null;
-  window.RepoFusion.pose.tracking = data.tracking || "unknown";
-};
+    XR8.addCameraPipelineModule({
+        name: "bridge-exporter",
+        onUpdate: ({ processCpuResult }) => {
+            const reality = processCpuResult?.reality;
+            if (!reality) return;
+
+            window.RepoFusion.pose.camera = { rotation: reality.rotation, position: reality.position };
+            window.RepoFusion.pose.marker = reality.detectedImages?.[0] ? {
+                position: reality.detectedImages[0].position,
+                rotation: reality.detectedImages[0].rotation,
+                scale: reality.detectedImages[0].scale || 1
+            } : null;
+            window.RepoFusion.pose.intrinsics = reality.intrinsics || null;
+            window.RepoFusion.pose.tracking = reality.trackingStatus || "unknown";
+        }
+    });
+        panel.textContent = BRIDGE_VERSION + "\ninstalled ✔";
+}
+
+function renderBridge() {
+    let out = BRIDGE_VERSION + "\n\n";
+    out += "TRACKING: " + window.RepoFusion.pose.tracking + "\n\n";
+    out += "CAMERA:\n" + JSON.stringify(window.RepoFusion.pose.camera, null, 2) + "\n\n";
+    out += "MARKER:\n" + JSON.stringify(window.RepoFusion.pose.marker, null, 2);
+    panel.textContent = out;
+}
+
+// Inyectar el pipeline directamente si XR8 existe, sino esperar
+window.addEventListener("xrloaded", installBridge, { once: true });
+setInterval(renderBridge, 150);
 </script>
-
 <script>
 let current = 0;
 let envEnabled = true;
@@ -226,9 +278,8 @@ function createAR(){
 
   const container = document.getElementById("arContainer");
 
-  container.innerHTML = `
+    container.innerHTML = `
     <a-scene
-      mindar-image="imageTargetSrc: margot_targets.mind; autoStart: true; filterMinCF: 0.0002; filterBeta: 0.004;"
       renderer="alpha: true; physicallyCorrectLights: true; colorManagement: true; exposure: 1.01; toneMapping: ACESFilmicToneMapping;"
       color-space="sRGB"
       vr-mode-ui="enabled:false"
@@ -236,13 +287,10 @@ function createAR(){
 
       <a-camera position="0 0 0" look-controls="enabled:false"></a-camera>
 
-      <a-entity mindar-image-target="targetIndex: 0">
-        <a-gltf-model
-          id="aframeModel"
-          src="${models[current]}"
+      <a-entity id="aframeModel"
+          gltf-model="${models[current]}"
           rotation="90 0 0"
           scale="8 8 8">
-        </a-gltf-model>
       </a-entity>
 
     </a-scene>`;
@@ -343,9 +391,7 @@ envInterval = setInterval(() => {
   // mapping a exposure usable
   const exposure = 0.6 + (smoothed / 255) * 0.9;
 
-  const scene = document.querySelector("a-scene");
-
-  if (scene && scene.renderer) {
+    if (scene && scene.renderer) {
     scene.renderer.exposure = exposure;
   }
   if (envMode === "cam" && cameraRT) {
@@ -353,30 +399,6 @@ envInterval = setInterval(() => {
   scene.object3D.environment =
     cameraRT.texture;
 
-}
-  const target = document.querySelector("[mindar-image-target]");
-
-if (target) {
-
-  const p = target.object3D.position;
-const q = target.object3D.quaternion;
-const s = target.object3D.scale;
-
-  target.object3D.matrixWorld.decompose(p, q, s);
-  
-  prueba.innerText =
-`LIGHT ${Math.round(smoothed)} | EXP ${exposure.toFixed(2)}
-
-PX ${p.x.toFixed(5)}
-PY ${p.y.toFixed(5)}
-PZ ${p.z.toFixed(5)}
-
-SX ${s.x.toFixed(5)}
-
-QX ${q.x.toFixed(5)}
-QY ${q.y.toFixed(5)}
-QZ ${q.z.toFixed(5)}
-QW ${q.w.toFixed(5)}`;
 }
   
 }, 50);
@@ -439,17 +461,17 @@ function next(){
 }
 
 function startAR(){
-  // --- AÑADIMOS EL ARRANQUE DE 8TH WALL AQUÍ ---
+  // --- ARRANQUE DE 8TH WALL ---
+  // Cambiamos a carga síncrona directa para asegurar inicialización
   const bundle = document.createElement("script");
   bundle.src = "bundle.js";
   document.body.appendChild(bundle);
+  // ----------------------------
+  
+  // Mostrar el botón de entorno al iniciar AR
+  document.getElementById("envToggle").style.display = "block";
 
-  const bridge = document.createElement("script");
-  bridge.src = "bridge.js?t=" + Date.now();
-  document.body.appendChild(bridge);
-  // ---------------------------------------------
-
-  history.pushState({mode:"ar", current}, "");
+  history.pushState({mode:"ar"}, "");
   destroyMV();
   document.getElementById("startScreen").style.display = "none";
   document.getElementById("arContainer").style.display = "block";
@@ -459,14 +481,26 @@ function startAR(){
 function stopAR(){
   destroyAR();
   document.getElementById("lightDebug").style.display = "none";
-  document.querySelectorAll(".mindar-ui-scanning")
-  .forEach(el => el.remove());
+  // Ocultar el botón de entorno al salir
+  document.getElementById("envToggle").style.display = "none";
+  
   document.getElementById("arContainer").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
-  createMV();
+  
+  // Limpieza agresiva del contenedor
+  document.getElementById("arContainer").innerHTML = "";
+  
+  if (!mv) createMV();
 }
 
-window.addEventListener("popstate", () => stopAR());
+// ---------------------------------------------
+// Inicialización de historial y carga inicial
+window.history.replaceState({mode:"menu"}, "");
+window.addEventListener("popstate", (event) => {
+  if (event.state?.mode !== "ar") {
+    stopAR();
+  }
+});
 createMV();
 
 function toggleEnv(){
@@ -513,3 +547,4 @@ function toggleEnv(){
 
 </body>
 </html>
+
